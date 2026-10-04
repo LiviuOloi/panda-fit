@@ -136,5 +136,37 @@ void main() {
         isTrue,
       );
     });
+
+    test('Metabolic calculations: BMR, Maintenance TDEE, and Target Calories', () {
+      // Male, 100 kg, 180 cm, 30 years old
+      // BMR = 10*100 + 6.25*180 - 5*30 + 5 = 1000 + 1125 - 150 + 5 = 1980 kcal
+      final bmrMale = CalculationEngine.calculateBMR(weightKg: 100, heightCm: 180, age: 30, sex: 'MALE');
+      expect(bmrMale, 1980);
+
+      // Maintenance (TDEE) = 1980 * 1.4 = 2772 kcal
+      final tdeeMale = CalculationEngine.calculateMaintenanceCalories(weightKg: 100, heightCm: 180, age: 30, sex: 'MALE');
+      expect(tdeeMale, 2772);
+
+      // Cutting Target = 2772 - 450 = 2322 kcal
+      final cutTarget = CalculationEngine.calculateRecommendedTargetCalories(
+        weightKg: 100,
+        heightCm: 180,
+        age: 30,
+        sex: 'MALE',
+        missionType: 'CUTTING',
+      );
+      expect(cutTarget, 2322);
+
+      // Bulking Target = 2772 + 300 = 3072 kcal
+      final bulkTarget = CalculationEngine.calculateRecommendedTargetCalories(
+        weightKg: 100,
+        heightCm: 180,
+        age: 30,
+        sex: 'MALE',
+        missionType: 'BULKING',
+      );
+      expect(bulkTarget, 3072);
+    });
   });
 }
+

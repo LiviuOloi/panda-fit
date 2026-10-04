@@ -100,4 +100,56 @@ class CalculationEngine {
     }
     return 0.0;
   }
+
+  /// Calculates Basal Metabolic Rate (BMR) using Mifflin-St Jeor equation
+  static int calculateBMR({
+    required double weightKg,
+    required double heightCm,
+    required int age,
+    required String sex,
+  }) {
+    final s = (10 * weightKg) + (6.25 * heightCm) - (5 * age);
+    if (sex.toUpperCase() == 'FEMALE') {
+      return (s - 161).round();
+    } else if (sex.toUpperCase() == 'MALE') {
+      return (s + 5).round();
+    }
+    return (s - 78).round();
+  }
+
+  /// Calculates Total Daily Energy Expenditure (TDEE / Maintenance Calories)
+  /// [activityMultiplier] defaults to 1.4 (moderate daily activity)
+  static int calculateMaintenanceCalories({
+    required double weightKg,
+    required double heightCm,
+    required int age,
+    required String sex,
+    double activityMultiplier = 1.4,
+  }) {
+    final bmr = calculateBMR(weightKg: weightKg, heightCm: heightCm, age: age, sex: sex);
+    return (bmr * activityMultiplier).round();
+  }
+
+  /// Calculates recommended target calories for active mission
+  static int calculateRecommendedTargetCalories({
+    required double weightKg,
+    required double heightCm,
+    required int age,
+    required String sex,
+    required String missionType,
+  }) {
+    final maintenance = calculateMaintenanceCalories(
+      weightKg: weightKg,
+      heightCm: heightCm,
+      age: age,
+      sex: sex,
+    );
+    if (missionType.toUpperCase() == 'CUTTING') {
+      return math.max(1400, maintenance - 450);
+    } else if (missionType.toUpperCase() == 'BULKING') {
+      return maintenance + 300;
+    }
+    return maintenance;
+  }
 }
+

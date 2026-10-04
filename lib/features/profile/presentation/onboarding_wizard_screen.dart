@@ -29,7 +29,6 @@ class _OnboardingWizardScreenState extends ConsumerState<OnboardingWizardScreen>
   DateTime _birthDate = DateTime(1995, 1, 1);
   final _heightController = TextEditingController(text: '180');
   final _startWeightController = TextEditingController(text: '95.0');
-  final _targetCaloriesController = TextEditingController(text: '2300');
 
   // Step 3: Initial Mission
   MissionType _missionType = MissionType.cutting;
@@ -42,7 +41,6 @@ class _OnboardingWizardScreenState extends ConsumerState<OnboardingWizardScreen>
     _lastNameController.dispose();
     _heightController.dispose();
     _startWeightController.dispose();
-    _targetCaloriesController.dispose();
     _missionTargetWeightController.dispose();
     super.dispose();
   }
@@ -119,7 +117,6 @@ class _OnboardingWizardScreenState extends ConsumerState<OnboardingWizardScreen>
     final startW = double.tryParse(_startWeightController.text);
     final targetW = double.tryParse(_missionTargetWeightController.text);
     final height = double.tryParse(_heightController.text) ?? 180.0;
-    final calories = int.tryParse(_targetCaloriesController.text) ?? 2300;
 
     if (startW == null || targetW == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -130,6 +127,15 @@ class _OnboardingWizardScreenState extends ConsumerState<OnboardingWizardScreen>
 
     final roundedStart = CalculationEngine.roundWeight(startW);
     final roundedTarget = CalculationEngine.roundWeight(targetW);
+
+    // Initial baseline calories derived from biometrics & mission type
+    final initialCalories = CalculationEngine.calculateRecommendedTargetCalories(
+      weightKg: roundedStart,
+      heightCm: height,
+      age: _calculatedAge,
+      sex: _sex,
+      missionType: _missionType.name,
+    );
 
     // Strict Domain Invariant Validation (AGENTS.md Section 4.3)
     if (_missionType == MissionType.cutting && roundedTarget >= roundedStart) {
@@ -161,7 +167,7 @@ class _OnboardingWizardScreenState extends ConsumerState<OnboardingWizardScreen>
       birthDate: _birthDate,
       heightCm: height,
       profileStartWeight: roundedStart,
-      dailyTargetCalories: calories,
+      dailyTargetCalories: initialCalories,
       firstMissionType: _missionType,
       firstTargetWeight: roundedTarget,
     );
@@ -382,31 +388,15 @@ class _OnboardingWizardScreenState extends ConsumerState<OnboardingWizardScreen>
           ),
           const SizedBox(height: 16),
 
-          // Height & Daily Calories
-          Row(
-            children: [
-              Expanded(
-                child: TextFormField(
-                  controller: _heightController,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  decoration: const InputDecoration(
-                    labelText: 'Height',
-                    suffixText: 'cm',
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: TextFormField(
-                  controller: _targetCaloriesController,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    labelText: 'Daily Calories',
-                    suffixText: 'kcal',
-                  ),
-                ),
-              ),
-            ],
+          // Height Input
+          TextFormField(
+            controller: _heightController,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: const InputDecoration(
+              labelText: 'Height',
+              suffixText: 'cm',
+              prefixIcon: Icon(Icons.height, color: AppColors.textMuted, size: 20),
+            ),
           ),
           const SizedBox(height: 20),
 

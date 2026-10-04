@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:google_generative_ai/google_generative_ai.dart';
+import '../../../core/utils/calculation_engine.dart';
 import '../../missions/domain/mission_model.dart';
 import '../../profile/domain/profile_model.dart';
 import '../domain/recipe_model.dart';
@@ -11,19 +12,26 @@ class AiNutritionService {
 
   static const String _systemPrompt = '''
 You are the PandaFit AI Head Nutritionist & Metabolic Coach.
-Your goal is to design personalized, glycemic-optimized, sustainable meal plans for users tracking their health, body composition, and HbA1c/glycemic stability.
+Your goal is to guide users with evidence-based nutrition, metabolic health, and glycemic optimization.
 
-STRICT DOMAIN RULES:
-1. Weighing Protocol:
+METABOLIC & CALORIC INVARIANTS:
+1. Basal Metabolic Rate (BMR) & Maintenance (TDEE):
+   - Calculate using Mifflin-St Jeor formula based on user's exact age, sex, height, and starting weight.
+   - Explain what Maintenance Calories (TDEE) are: the exact energy needed to stay at current weight.
+   - For CUTTING (fat loss): Recommend a sustainable 400-500 kcal deficit below maintenance.
+   - For BULKING (lean gain): Recommend a controlled 250-350 kcal surplus above maintenance.
+
+2. STRICT WEIGHING PROTOCOL:
    - Meat/Poultry/Fish: Always specified in RAW / uncooked grams.
    - Rice/Grains/Pasta: Always specified in DRY / uncooked grams.
    - Vegetables: Always specified in RAW or FROZEN grams (for high-volume fiber).
    - Cooking Oils/Fats: Always measured in grams or ml (never "a splash").
-2. Glycemic Invariants:
-   - Low glycemic index complex carbs (e.g. oats, graham/whole wheat, basmati/panzani rice, sweet potatoes).
-   - Elevated dietary fiber with large vegetable volumes.
-   - Lean proteins (cottage cheese light, chicken breast, egg whites, greek yogurt 2%, fish).
-3. Return response in valid JSON array format when generating meal templates.
+
+3. Glycemic Invariants:
+   - Low glycemic index complex carbs (oats, graham bread, basmati/panzani rice, sweet potatoes).
+   - High volume fiber vegetables (broccoli, green beans, mushrooms, spinach, cucumbers).
+   - Lean protein sources (cottage cheese 3%, egg whites, chicken breast, fish, lean beef).
+   - Return response in valid JSON array format when generating meal templates.
 ''';
 
   /// Generates personalized meal recommendations based on biometrics, active mission, and user preferences
@@ -34,6 +42,21 @@ STRICT DOMAIN RULES:
   }) async {
     final apiKey = _apiKey ?? const String.fromEnvironment('GEMINI_API_KEY');
 
+    final bmr = CalculationEngine.calculateBMR(
+      weightKg: profile.profileStartWeight,
+      heightCm: profile.heightCm,
+      age: profile.age,
+      sex: profile.sex,
+    );
+    final maintenance = CalculationEngine.calculateMaintenanceCalories(
+      weightKg: profile.profileStartWeight,
+      heightCm: profile.heightCm,
+      age: profile.age,
+      sex: profile.sex,
+    );
+    final isCutting = activeMission.missionType == MissionType.cutting;
+    final recommendedTarget = isCutting ? maintenance - 450 : maintenance + 300;
+
     if (apiKey.isNotEmpty) {
       try {
         final model = GenerativeModel(
@@ -42,7 +65,6 @@ STRICT DOMAIN RULES:
           systemInstruction: Content.system(_systemPrompt),
         );
 
-        final isCutting = activeMission.missionType == MissionType.cutting;
         final prompt = '''
 User Biometrics:
 - Age: ${profile.age} years old
@@ -51,7 +73,9 @@ User Biometrics:
 - Start Weight: ${profile.profileStartWeight} kg
 - Target Weight: ${activeMission.targetWeight} kg
 - Mission Focus: ${isCutting ? "CUTTING (Healthy sustainable fat loss deficit)" : "BULKING (Controlled lean mass surplus)"}
-- Baseline Target Calories: ${profile.dailyTargetCalories} kcal/day
+- Calculated BMR: $bmr kcal/day
+- Calculated Maintenance (TDEE): $maintenance kcal/day
+- Recommended Daily Target: $recommendedTarget kcal/day
 - User Specific Dietary Preferences / Exclusions: "$userPreferences"
 
 Please generate 3 tailored meal recipes (e.g., 1 Breakfast, 1 Lunch/Snack, 1 Custom Dinner) optimized for these biometrics and preferences.
@@ -100,6 +124,21 @@ Return ONLY a valid JSON array matching this exact schema:
   }) async {
     final apiKey = _apiKey ?? const String.fromEnvironment('GEMINI_API_KEY');
 
+    final bmr = CalculationEngine.calculateBMR(
+      weightKg: profile.profileStartWeight,
+      heightCm: profile.heightCm,
+      age: profile.age,
+      sex: profile.sex,
+    );
+    final maintenance = CalculationEngine.calculateMaintenanceCalories(
+      weightKg: profile.profileStartWeight,
+      heightCm: profile.heightCm,
+      age: profile.age,
+      sex: profile.sex,
+    );
+    final isCutting = activeMission.missionType == MissionType.cutting;
+    final recommendedTarget = isCutting ? maintenance - 450 : maintenance + 300;
+
     if (apiKey.isNotEmpty) {
       try {
         final model = GenerativeModel(
@@ -113,7 +152,7 @@ Return ONLY a valid JSON array matching this exact schema:
           final isUser = msg['role'] == 'user';
           contents.add(isUser ? Content.text(msg['text']!) : Content.model([TextPart(msg['text']!)]));
         }
-        contents.add(Content.text('User biometrics: ${profile.age}yo, ${profile.heightCm}cm, ${profile.profileStartWeight}kg -> target ${activeMission.targetWeight}kg (${activeMission.missionType.name}). User question: $userMessage'));
+        contents.add(Content.text('User biometrics: ${profile.age}yo, ${profile.heightCm}cm, ${profile.profileStartWeight}kg -> target ${activeMission.targetWeight}kg (${activeMission.missionType.name}). BMR: $bmr kcal, Maintenance TDEE: $maintenance kcal, Recommended Target: $recommendedTarget kcal. User question: $userMessage'));
 
         final response = await model.generateContent(contents);
         return response.text ?? 'I could not generate an answer right now.';
@@ -203,9 +242,35 @@ Return ONLY a valid JSON array matching this exact schema:
     Mission activeMission,
   ) {
     final lower = userMessage.toLowerCase();
+    final bmr = CalculationEngine.calculateBMR(
+      weightKg: profile.profileStartWeight,
+      heightCm: profile.heightCm,
+      age: profile.age,
+      sex: profile.sex,
+    );
+    final maintenance = CalculationEngine.calculateMaintenanceCalories(
+      weightKg: profile.profileStartWeight,
+      heightCm: profile.heightCm,
+      age: profile.age,
+      sex: profile.sex,
+    );
+    final isCutting = activeMission.missionType == MissionType.cutting;
+    final recommendedTarget = isCutting ? maintenance - 450 : maintenance + 300;
+
+    if (lower.contains('menten') || lower.contains('calor') || lower.contains('bmr') || lower.contains('tdee')) {
+      return '''
+📊 **Analiza Metabolică PandaFit pentru Tine:**
+- **Rata Metabolică Bazală (BMR):** ~$bmr kcal/zi (energia consumată în repaus total).
+- **Calorii de Mentenanță (TDEE):** ~$maintenance kcal/zi (caloriile la care greutatea ta rămâne constantă).
+- **Ținta Recomandată (${activeMission.missionType.name.toUpperCase()}):** ~$recommendedTarget kcal/zi ${isCutting ? '(-450 kcal deficit pentru arderea grăsimilor fără încetinire metabolică)' : '(+300 kcal surplus pentru masă musculară curată)'}.
+
+Vrei să-ți propun un meniu complet de 3 mese care să atingă exact aceste ~$recommendedTarget kcal?''';
+    }
+
     if (lower.contains('inlocui') || lower.contains('schimb') || lower.contains('replace')) {
       return 'Sigur! Conform ghidului PandaFit:\n- Orezul uscat (100g) poate fi înlocuit cu ~350g Cartofi Dulci sau ~80g Fulgi de Ovăz integrali.\n- Puiul crud (200g) poate fi înlocuit cu 220g File de Păstrăv/Somon sau 200g Mușchiuleț de Vită slabă.\nToate gramajele rămân calculate în stare brută/crudă pentru acuratețe maximă!';
     }
-    return 'Am analizat profilul tău (${profile.age} ani, ${profile.heightCm} cm, pornire de la ${profile.profileStartWeight} kg către ținta de ${activeMission.targetWeight} kg în faza ${activeMission.missionType.name.toUpperCase()}).\nPentru a menține deficitul optim, recomandăm menținerea carbohidraților complecși la mesele din jurul antrenamentului și cântărirea strictă în stare crudă a proteinelor!';
+
+    return 'Am analizat profilul tău (${profile.age} ani, ${profile.heightCm} cm, pornire de la ${profile.profileStartWeight} kg către ținta de ${activeMission.targetWeight} kg în faza ${activeMission.missionType.name.toUpperCase()}).\nMentenanța ta calculată este de ~$maintenance kcal/zi, iar ținta recomandată este de ~$recommendedTarget kcal/zi. Cum dorești să structurăm mesele?';
   }
 }

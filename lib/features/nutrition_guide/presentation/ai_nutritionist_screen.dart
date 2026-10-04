@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/utils/calculation_engine.dart';
 import '../../../core/widgets/glass_card.dart';
 import '../../../core/widgets/panda_button.dart';
 import '../../auth/presentation/auth_controller.dart';
@@ -46,9 +47,24 @@ class _AiNutritionistScreenState extends ConsumerState<AiNutritionistScreen> {
   @override
   void initState() {
     super.initState();
+    final maintenance = CalculationEngine.calculateMaintenanceCalories(
+      weightKg: widget.profile.profileStartWeight,
+      heightCm: widget.profile.heightCm,
+      age: widget.profile.age,
+      sex: widget.profile.sex,
+    );
+    final target = CalculationEngine.calculateRecommendedTargetCalories(
+      weightKg: widget.profile.profileStartWeight,
+      heightCm: widget.profile.heightCm,
+      age: widget.profile.age,
+      sex: widget.profile.sex,
+      missionType: widget.activeMission.missionType.name,
+    );
+    final isCutting = widget.activeMission.missionType == MissionType.cutting;
+
     _messages.add({
       'role': 'ai',
-      'text': 'Salut ${widget.profile.firstName}! Sunt Panda Coach AI 🐼.\nAm analizat profilul tău (${widget.profile.age} ani, ${widget.profile.profileStartWeight} kg -> țintă ${widget.activeMission.targetWeight} kg, faza ${widget.activeMission.missionType.name.toUpperCase()}).\n\nCe preferințe alimentare ai (ex. fără porc, mai mult pește, rețete sub 20 min) sau vrei să-ți propun direct un plan de mese optimizat glicemic?',
+      'text': 'Salut ${widget.profile.firstName}! Sunt Panda Coach AI 🐼.\n\n📊 **Analiza Ta Metabolică:**\n• Greutate: ${widget.profile.profileStartWeight} kg · Înălțime: ${widget.profile.heightCm} cm · Vârstă: ${widget.profile.age} ani\n• **Calorii de Mentenanță (TDEE):** ~$maintenance kcal/zi\n• **Ținta Recomandată (${widget.activeMission.missionType.name.toUpperCase()}):** ~$target kcal/zi ${isCutting ? '(-450 kcal deficit)' : '(+300 kcal surplus)'}\n\nSpune-mi ce preferințe alimentare ai (ex. fără porc, mai mult pește, rețete rapide) și îți voi structura mesele ideale!',
     });
   }
 
@@ -241,6 +257,7 @@ class _AiNutritionistScreenState extends ConsumerState<AiNutritionistScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               child: Row(
                 children: [
+                  _buildQuickChip('📊 Analiză Mentenanță & TDEE'),
                   _buildQuickChip('🔥 Generează Plan de Cutting'),
                   _buildQuickChip('🐟 Meniu bogat în pește & somon'),
                   _buildQuickChip('🚫 Fără lactate / Fără lactoză'),
