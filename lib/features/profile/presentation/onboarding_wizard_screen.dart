@@ -389,12 +389,13 @@ class _OnboardingWizardScreenState extends ConsumerState<OnboardingWizardScreen>
           ),
           const SizedBox(height: 16),
 
-          // Height Input
+          // Height Input (Max 3 digits, e.g. 197 cm)
           TextFormField(
             controller: _heightController,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            keyboardType: TextInputType.number,
             inputFormatters: [
-              FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,1}')),
+              FilteringTextInputFormatter.digitsOnly,
+              LengthLimitingTextInputFormatter(3),
             ],
             decoration: const InputDecoration(
               labelText: 'Height',
@@ -404,7 +405,7 @@ class _OnboardingWizardScreenState extends ConsumerState<OnboardingWizardScreen>
           ),
           const SizedBox(height: 20),
 
-          // Starting Weight
+          // Starting Weight (Max 3 digits before decimal + 1 decimal, e.g. 102.4 kg)
           const Text(
             'Starting Morning Weight (0.1 kg Precision)',
             style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.textPrimary, fontSize: 14),
@@ -419,7 +420,8 @@ class _OnboardingWizardScreenState extends ConsumerState<OnboardingWizardScreen>
             controller: _startWeightController,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             inputFormatters: [
-              FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,1}')),
+              FilteringTextInputFormatter.allow(RegExp(r'^\d{1,3}(\.\d{0,1})?$')),
+              LengthLimitingTextInputFormatter(5),
             ],
             style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
             decoration: const InputDecoration(
@@ -462,7 +464,7 @@ class _OnboardingWizardScreenState extends ConsumerState<OnboardingWizardScreen>
           ),
           const SizedBox(height: 20),
 
-          // Target Weight
+          // Target Weight (Max 3 digits before decimal + 1 decimal, e.g. 95.0 kg)
           const Text(
             'Mission Target Weight',
             style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.textPrimary, fontSize: 14),
@@ -479,7 +481,8 @@ class _OnboardingWizardScreenState extends ConsumerState<OnboardingWizardScreen>
             controller: _missionTargetWeightController,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             inputFormatters: [
-              FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,1}')),
+              FilteringTextInputFormatter.allow(RegExp(r'^\d{1,3}(\.\d{0,1})?$')),
+              LengthLimitingTextInputFormatter(5),
             ],
             style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
             decoration: const InputDecoration(

@@ -112,7 +112,8 @@ class _DailyLoggerScreenState extends ConsumerState<DailyLoggerScreen> {
                       controller: _weightController,
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
                       inputFormatters: [
-                        FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,1}')),
+                        FilteringTextInputFormatter.allow(RegExp(r'^\d{1,3}(\.\d{0,1})?$')),
+                        LengthLimitingTextInputFormatter(5),
                       ],
                       style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
                       decoration: const InputDecoration(
