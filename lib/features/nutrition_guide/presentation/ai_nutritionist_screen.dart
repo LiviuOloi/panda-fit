@@ -125,11 +125,11 @@ class _AiNutritionistScreenState extends ConsumerState<AiNutritionistScreen> {
 
   Future<void> _saveRecipeToUserMenu(MealRecipe recipe) async {
     final user = ref.read(currentUserProvider);
-    if (user == null) return;
+    final userId = user?.id ?? widget.profile.id;
 
     final userRecipe = MealRecipe(
       id: '',
-      userId: user.id,
+      userId: userId,
       category: recipe.category,
       title: recipe.title,
       ingredients: recipe.ingredients,
@@ -140,19 +140,29 @@ class _AiNutritionistScreenState extends ConsumerState<AiNutritionistScreen> {
       instructions: recipe.instructions,
     );
 
-    final repo = ref.read(recipesRepositoryProvider);
-    await repo.createCustomRecipe(userRecipe);
+    try {
+      final repo = ref.read(recipesRepositoryProvider);
+      await repo.createCustomRecipe(userRecipe);
 
-    ref.invalidate(allRecipesProvider);
+      ref.invalidate(allRecipesProvider);
 
-    if (!mounted) return;
+      if (!mounted) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('"${recipe.title}" saved to your personal menu!'),
-        backgroundColor: AppColors.emerald,
-      ),
-    );
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('"${recipe.title}" saved to your personal menu!'),
+          backgroundColor: AppColors.emerald,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error saving recipe: $e'),
+          backgroundColor: AppColors.rose,
+        ),
+      );
+    }
   }
 
   void _scrollToBottom() {

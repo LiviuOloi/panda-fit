@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/panda_button.dart';
 import '../../auth/presentation/auth_controller.dart';
+import '../../profile/presentation/profile_controller.dart';
 import '../domain/recipe_model.dart';
 import 'ai_nutritionist_screen.dart';
 
@@ -18,6 +19,7 @@ class CustomRecipeDialog extends ConsumerStatefulWidget {
 
 class _CustomRecipeDialogState extends ConsumerState<CustomRecipeDialog> {
   final _formKey = GlobalKey<FormState>();
+  final _scrollController = ScrollController();
   late TextEditingController _titleController;
   late TextEditingController _caloriesController;
   late TextEditingController _proteinController;
@@ -27,6 +29,8 @@ class _CustomRecipeDialogState extends ConsumerState<CustomRecipeDialog> {
 
   String _category = 'DINNER';
   final List<RecipeIngredient> _ingredients = [];
+  String? _errorMessage;
+  bool _isLoading = false;
 
   final _ingredientNameController = TextEditingController();
   final _ingredientAmountController = TextEditingController();
@@ -62,6 +66,7 @@ class _CustomRecipeDialogState extends ConsumerState<CustomRecipeDialog> {
 
   @override
   void dispose() {
+    _scrollController.dispose();
     _titleController.dispose();
     _caloriesController.dispose();
     _proteinController.dispose();
@@ -86,54 +91,91 @@ class _CustomRecipeDialogState extends ConsumerState<CustomRecipeDialog> {
           state: _ingredientState,
         ),
       );
+      _errorMessage = null;
       _ingredientNameController.clear();
       _ingredientAmountController.clear();
     });
   }
 
   Future<void> _saveRecipe() async {
-    if (!_formKey.currentState!.validate()) return;
+    setState(() => _errorMessage = null);
+
+    if (!_formKey.currentState!.validate()) {
+      setState(() {
+        _errorMessage = 'Please enter a Recipe Title to continue.';
+      });
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          0.0,
+          duration: const Duration(milliseconds: 350),
+          curve: Curves.easeOutCubic,
+        );
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter a Recipe Title at the top.'),
+          backgroundColor: AppColors.rose,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
+
     if (_ingredients.isEmpty) {
+      setState(() {
+        _errorMessage = 'Please add at least one ingredient.';
+      });
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please add at least one ingredient.'), backgroundColor: AppColors.rose),
       );
       return;
     }
 
-    final user = ref.read(currentUserProvider);
-    if (user == null) return;
+    setState(() => _isLoading = true);
 
-    final recipe = MealRecipe(
-      id: widget.existingRecipe?.id ?? '',
-      userId: user.id,
-      category: _category,
-      title: _titleController.text.trim(),
-      ingredients: _ingredients,
-      calories: int.tryParse(_caloriesController.text) ?? 0,
-      proteinG: double.tryParse(_proteinController.text),
-      carbsG: double.tryParse(_carbsController.text),
-      fatG: double.tryParse(_fatController.text),
-      instructions: _instructionsController.text.trim(),
-    );
+    try {
+      final user = ref.read(currentUserProvider);
+      final profile = ref.read(userProfileProvider).valueOrNull;
+      final userId = user?.id ?? profile?.id ?? 'local_user';
 
-    final repo = ref.read(recipesRepositoryProvider);
-    if (widget.existingRecipe != null) {
-      await repo.updateCustomRecipe(recipe);
-    } else {
-      await repo.createCustomRecipe(recipe);
+      final recipe = MealRecipe(
+        id: widget.existingRecipe?.id ?? '',
+        userId: userId,
+        category: _category,
+        title: _titleController.text.trim(),
+        ingredients: _ingredients,
+        calories: int.tryParse(_caloriesController.text) ?? 0,
+        proteinG: double.tryParse(_proteinController.text),
+        carbsG: double.tryParse(_carbsController.text),
+        fatG: double.tryParse(_fatController.text),
+        instructions: _instructionsController.text.trim(),
+      );
+
+      final repo = ref.read(recipesRepositoryProvider);
+      if (widget.existingRecipe != null) {
+        await repo.updateCustomRecipe(recipe);
+      } else {
+        await repo.createCustomRecipe(recipe);
+      }
+
+      ref.invalidate(allRecipesProvider);
+
+      if (!mounted) return;
+      Navigator.of(context).pop();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Recipe "${recipe.title}" saved successfully!'),
+          backgroundColor: AppColors.emerald,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _errorMessage = 'Error saving recipe: $e';
+      });
     }
-
-    ref.invalidate(allRecipesProvider);
-
-    if (!mounted) return;
-    Navigator.of(context).pop();
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Recipe "${recipe.title}" saved successfully!'),
-        backgroundColor: AppColors.emerald,
-      ),
-    );
   }
 
   @override
@@ -151,6 +193,7 @@ class _CustomRecipeDialogState extends ConsumerState<CustomRecipeDialog> {
           child: Form(
             key: _formKey,
             child: SingleChildScrollView(
+              controller: _scrollController,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -175,6 +218,11 @@ class _CustomRecipeDialogState extends ConsumerState<CustomRecipeDialog> {
                     controller: _titleController,
                     decoration: const InputDecoration(labelText: 'Recipe Title (e.g. Salmon & Low-GI Veggies)'),
                     validator: (v) => v == null || v.trim().isEmpty ? 'Please enter recipe title' : null,
+                    onChanged: (v) {
+                      if (_errorMessage != null) {
+                        setState(() => _errorMessage = null);
+                      }
+                    },
                   ),
                   const SizedBox(height: 12),
 
@@ -410,10 +458,34 @@ class _CustomRecipeDialogState extends ConsumerState<CustomRecipeDialog> {
                   ),
                   const SizedBox(height: 20),
 
+                  if (_errorMessage != null)
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: AppColors.rose.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: AppColors.rose.withValues(alpha: 0.4)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.error_outline, color: AppColors.rose, size: 18),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              _errorMessage!,
+                              style: const TextStyle(color: AppColors.rose, fontSize: 12, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
                   // Save Button
                   PandaButton(
                     label: widget.existingRecipe == null ? 'Save Recipe' : 'Update Recipe',
                     icon: Icons.check,
+                    isLoading: _isLoading,
                     onPressed: _saveRecipe,
                   ),
                 ],
