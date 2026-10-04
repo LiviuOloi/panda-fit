@@ -22,7 +22,18 @@ Runs seamlessly on **Web**, **Android**, and **iOS** from a single Flutter & Dar
 - **State Management:** [Flutter Riverpod](https://riverpod.dev)
 - **Data Visualization:** [`fl_chart`](https://pub.dev/packages/fl_chart)
 - **Offline Storage:** `shared_preferences`
+- **AI Engine:** Google Generative AI (`google_generative_ai` / Gemini 1.5 Flash Free Tier) with offline rule-based fallback
 - **Design System:** Material 3 Dark & Glassmorphism Theme (Emerald, Cyan, Slate, Amber)
+
+---
+
+## 🤖 Features Highlight
+
+- **📊 7-Day Rolling Moving Average:** Filters water weight fluctuations and visualizes real biological progress.
+- **🎯 Cutting & Bulking Missions:** Strict inequality completion milestones with instant celebration.
+- **🤖 Panda Coach AI Nutritionist:** Interactive conversational AI powered by Gemini that dynamically crafts custom meals tailored to your biometric profile (height, weight, age, caloric targets, glycemic focus), with instant one-click save to your personal menu.
+- **🥗 Custom Meal & Recipe Management:** Add, edit, and organize personal breakfast, snack, and dinner recipes with accurate raw/dry weighing tags.
+- **⚡ Fast Daily Logger:** Morning weigh-in, dynamic dinner selection from your personalized menu, activity logging (swimming), and calorie balancing.
 
 ---
 
@@ -38,10 +49,12 @@ Create a `.env` file in the root directory:
 ```env
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_ANON_KEY=your-anon-key
+GEMINI_API_KEY=your-gemini-api-key # Optional: Panda Coach AI works with offline fallback if omitted
 ```
 
 ### 3. Run the App
 - **Web:** `flutter run -d chrome`
 - **Unit Tests:** `flutter test`
 - **Static Analysis:** `flutter analyze`
+
 
