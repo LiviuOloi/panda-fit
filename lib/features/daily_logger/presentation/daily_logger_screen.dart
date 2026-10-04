@@ -654,6 +654,7 @@ class _DailyLoggerScreenState extends ConsumerState<DailyLoggerScreen> {
     final estimatedBurn = activity.getCalories(weightKg);
 
     return Container(
+      key: ValueKey(activity.id),
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -664,56 +665,60 @@ class _DailyLoggerScreenState extends ConsumerState<DailyLoggerScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Row 1: Dropdown & Delete
+          // Row 1: Activity Selector Tile & Delete
           Row(
             children: [
               Expanded(
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<PhysicalActivityType>(
-                    isExpanded: true,
-                    dropdownColor: AppColors.surfaceElevated,
-                    value: activity.activityType,
-                    items: PhysicalActivityType.values.map((type) {
-                      return DropdownMenuItem<PhysicalActivityType>(
-                        value: type,
-                        child: Row(
-                          children: [
-                            Icon(type.icon, color: AppColors.cyan, size: 18),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                type.displayName,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(8),
+                  onTap: () => _showActivityPicker(activity),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: AppColors.glassBorder),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(activity.activityType.icon, color: AppColors.cyan, size: 20),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                activity.activityType.displayName,
                                 style: const TextStyle(
                                   fontSize: 13,
                                   color: AppColors.textPrimary,
-                                  fontWeight: FontWeight.w500,
+                                  fontWeight: FontWeight.w600,
                                 ),
                                 overflow: TextOverflow.ellipsis,
                               ),
-                            ),
-                          ],
+                              Text(
+                                'MET: ${activity.activityType.pessimisticMet}',
+                                style: const TextStyle(fontSize: 10, color: AppColors.textMuted),
+                              ),
+                            ],
+                          ),
                         ),
-                      );
-                    }).toList(),
-                    onChanged: (newType) {
-                      if (newType != null) {
-                        setState(() {
-                          activity.activityType = newType;
-                          _recalculateCaloriesOut();
-                        });
-                      }
-                    },
+                        const Icon(Icons.keyboard_arrow_down, color: AppColors.textSecondary, size: 18),
+                      ],
+                    ),
                   ),
                 ),
               ),
+              const SizedBox(width: 4),
               IconButton(
                 icon: const Icon(Icons.delete_outline, color: AppColors.rose, size: 18),
                 visualDensity: VisualDensity.compact,
+                tooltip: 'Remove',
                 onPressed: () => _removeActivity(activity.id),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
 
           // Row 2: Mode Selector & Value Input
           Row(
@@ -838,6 +843,99 @@ class _DailyLoggerScreenState extends ConsumerState<DailyLoggerScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  void _showActivityPicker(LoggedActivity activity) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: AppColors.surfaceElevated,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      isScrollControlled: true,
+      builder: (ctx) {
+        return SafeArea(
+          child: Container(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(ctx).size.height * 0.70,
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Select Physical Activity',
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close, color: AppColors.textMuted, size: 20),
+                      onPressed: () => Navigator.pop(ctx),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Expanded(
+                  child: ListView.separated(
+                    itemCount: PhysicalActivityType.values.length,
+                    separatorBuilder: (_, __) => const Divider(color: AppColors.glassBorder, height: 1),
+                    itemBuilder: (context, idx) {
+                      final type = PhysicalActivityType.values[idx];
+                      final isSelected = activity.activityType == type;
+
+                      return ListTile(
+                        dense: true,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        leading: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: isSelected ? AppColors.cyan.withValues(alpha: 0.25) : AppColors.surface,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(
+                            type.icon,
+                            color: isSelected ? AppColors.cyan : AppColors.textSecondary,
+                            size: 20,
+                          ),
+                        ),
+                        title: Text(
+                          type.displayName,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                            color: isSelected ? AppColors.cyanLight : AppColors.textPrimary,
+                          ),
+                        ),
+                        subtitle: Text(
+                          'Pessimistic MET: ${type.pessimisticMet}',
+                          style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+                        ),
+                        trailing: isSelected
+                            ? const Icon(Icons.check_circle, color: AppColors.cyan, size: 20)
+                            : null,
+                        onTap: () {
+                          setState(() {
+                            activity.activityType = type;
+                            _recalculateCaloriesOut();
+                          });
+                          Navigator.pop(ctx);
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }
