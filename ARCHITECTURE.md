@@ -252,7 +252,11 @@ graph TD
 
 ```mermaid
 graph TD
-    UserQuery["User Prompt or Quick Chip (Cutting, Fish, 15-Min)"] --> GuardrailCheck["Biometric Context Injection (BMR, TDEE, Deficit, Glycemic Rules)"]
+    UserQuery["User Prompt, Quick Chip or Photo Scan (Camera / Gallery)"] --> MultimodalCheck{"Has Attached Image?"}
+    MultimodalCheck -->|Yes| DataPartInject["Encode DataPart (image/jpeg) + Prompt"]
+    MultimodalCheck -->|No| TextOnlyInject["Standard Text Content"]
+    DataPartInject --> GuardrailCheck["Biometric Context Injection (BMR, TDEE, Deficit, Glycemic Rules)"]
+    TextOnlyInject --> GuardrailCheck
     GuardrailCheck --> FallbackCascade{"Gemini API Call Cascade"}
     
     FallbackCascade -->|Try 1| Model1["gemini-1.5-flash-latest"]
@@ -268,6 +272,6 @@ graph TD
     OfflineEngine --> ParsedResult
     
     ParsedResult --> AttachInline["Attach Meal Cards Inline to Current Chat Turn"]
-    AttachInline --> LocalPersistence["Save to SharedPreferences (Chat & Recipes)"]
+    AttachInline --> LocalPersistence["Save to SharedPreferences (Chat, Image Base64 & Recipes)"]
     AttachInline --> UI["Render Inline Cards with 'Save to My Menu'"]
 ```

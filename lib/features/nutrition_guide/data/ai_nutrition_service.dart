@@ -50,6 +50,8 @@ CORE PRINCIPLES & METABOLIC INVARIANTS:
     required Mission activeMission,
     required String userPreferences,
     String? customApiKey,
+    Uint8List? imageBytes,
+    String? mimeType,
   }) async {
     final apiKey = customApiKey ?? _apiKey ?? const String.fromEnvironment('GEMINI_API_KEY');
 
@@ -81,6 +83,7 @@ User Biometrics:
 - Calculated Maintenance (TDEE): $maintenance kcal/day
 - Recommended Daily Target: $recommendedTarget kcal/day
 - Specific Dietary Request / Preferences: "$userPreferences"
+${imageBytes != null ? "NOTE: An image of a food product or nutrition label is attached. Inspect its ingredients, macros per 100g, and construct customized recipes featuring or incorporating this product with precise weighed portions!" : ""}
 
 Please generate 3 creative, delicious, low-glycemic meal recipes (e.g. 1 Breakfast, 1 Lunch/Snack, 1 Dinner) adapted to these goals and preferences.
 Weighing rules: Meat=raw, Rice/Carbs=dry/uncooked, Veggies=frozen/raw, Oil=measured.
@@ -112,7 +115,13 @@ Return ONLY a valid JSON array matching this exact schema without markdown wrap:
             systemInstruction: Content.system(_systemPrompt),
           );
 
-          final response = await model.generateContent([Content.text(prompt)]);
+          final contentParts = <Part>[];
+          if (imageBytes != null) {
+            contentParts.add(DataPart(mimeType ?? 'image/jpeg', imageBytes));
+          }
+          contentParts.add(TextPart(prompt));
+
+          final response = await model.generateContent([Content.multi(contentParts)]);
           final text = response.text;
           if (text != null) {
             final cleaned = _extractJson(text);
@@ -135,6 +144,8 @@ Return ONLY a valid JSON array matching this exact schema without markdown wrap:
     required UserProfile profile,
     required Mission activeMission,
     String? customApiKey,
+    Uint8List? imageBytes,
+    String? mimeType,
   }) async {
     final apiKey = customApiKey ?? _apiKey ?? const String.fromEnvironment('GEMINI_API_KEY');
 
@@ -170,6 +181,7 @@ CURRENT USER BIOMETRIC CONTEXT:
 COACHING STYLE & INSTRUCTIONS:
 - You are an intelligent, empathetic, and natural AI coach for PandaFit.
 - Converse naturally and intelligently. If the user greets you or asks a general question, chat with them warmly and conversationally!
+- When an image of a food nutrition label or ingredient is provided, carefully extract its macronutrients (Calories, Protein, Carbohydrates, Sugars, Fat, Saturated Fat, Fiber, Sodium) per 100g and per serving, assess its glycemic quality, and tell the user exactly how to fit it into their current daily target (~$recommendedTarget kcal/day) with recommended gram portions!
 - You can answer any questions on nutrition, workout routines, glycemic index, motivation, meal timing, or calorie deficit/surplus.
 - Keep answers concise, clear, and informative. Use markdown bolding and bullet points where helpful.
 - Respond in the language used by the user (English or Romanian).
@@ -200,9 +212,22 @@ COACHING STYLE & INSTRUCTIONS:
         }
       }
 
-      // If validTurns is empty or ends with a model message, add the current userMessage
+      // If validTurns is empty or ends with a model message, add the current userMessage (with image if present)
       if (validTurns.isEmpty || lastRole != 'user') {
-        validTurns.add(Content.text(userMessage));
+        if (imageBytes != null) {
+          final userText = userMessage.trim().isEmpty
+              ? 'Please analyze this food product / nutrition label image. Extract its macronutrients per 100g, assess its glycemic quality, and calculate the exact weighed portion I should eat to fit my current goals.'
+              : userMessage;
+          validTurns.add(Content.multi([DataPart(mimeType ?? 'image/jpeg', imageBytes), TextPart(userText)]));
+        } else {
+          validTurns.add(Content.text(userMessage));
+        }
+      } else if (imageBytes != null) {
+        // Replace the last user text turn with multimodal turn if image is present
+        final userText = userMessage.trim().isEmpty
+            ? 'Please analyze this food product / nutrition label image. Extract its macronutrients per 100g, assess its glycemic quality, and calculate the exact weighed portion I should eat to fit my current goals.'
+            : userMessage;
+        validTurns[validTurns.length - 1] = Content.multi([DataPart(mimeType ?? 'image/jpeg', imageBytes), TextPart(userText)]);
       }
 
       for (final modelName in _candidateModels) {

@@ -1,6 +1,8 @@
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/calculation_engine.dart';
@@ -43,10 +45,13 @@ class _AiNutritionistScreenState extends ConsumerState<AiNutritionistScreen> {
   final _aiService = AiNutritionService();
   final _textController = TextEditingController();
   final _scrollController = ScrollController();
+  final _picker = ImagePicker();
   static const _chatStorageKey = 'panda_eats_ai_chat_history_cache';
   static const _recipesStorageKey = 'panda_eats_ai_generated_recipes_cache';
 
   bool _isLoading = false;
+  Uint8List? _selectedImageBytes;
+  String? _selectedImageName;
   final List<Map<String, dynamic>> _messages = [];
 
   @override
@@ -134,13 +139,114 @@ class _AiNutritionistScreenState extends ConsumerState<AiNutritionistScreen> {
     super.dispose();
   }
 
+  Future<void> _pickImage(ImageSource source) async {
+    try {
+      final file = await _picker.pickImage(
+        source: source,
+        maxWidth: 1280,
+        maxHeight: 1280,
+        imageQuality: 85,
+      );
+      if (file != null) {
+        final bytes = await file.readAsBytes();
+        setState(() {
+          _selectedImageBytes = bytes;
+          _selectedImageName = file.name;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error picking image: $e');
+    }
+  }
+
+  void _showImageSourceDialog() {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Scan Nutrition Label or Product 📸',
+                style: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'Take a clear photo of the nutrition facts table or ingredient label. Panda AI will extract macros and build customized meals!',
+                style: TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.3),
+              ),
+              const SizedBox(height: 18),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppColors.emerald.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.camera_alt_outlined, color: AppColors.emerald),
+                ),
+                title: const Text('Take Photo with Camera', style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600)),
+                subtitle: const Text('Capture live food package or nutrition facts', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _pickImage(ImageSource.camera);
+                },
+              ),
+              const SizedBox(height: 8),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppColors.cyan.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.photo_library_outlined, color: AppColors.cyanLight),
+                ),
+                title: const Text('Upload from Gallery / Files', style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600)),
+                subtitle: const Text('Select existing photo or screenshot', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _pickImage(ImageSource.gallery);
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Future<void> _sendMessage([String? presetText]) async {
     final text = presetText ?? _textController.text.trim();
-    if (text.isEmpty || _isLoading) return;
+    final imageBytesToSend = _selectedImageBytes;
+    if ((text.isEmpty && imageBytesToSend == null) || _isLoading) return;
+
+    final promptText = text.isNotEmpty
+        ? text
+        : 'Please analyze this nutrition label image. Extract its macros per 100g, assess its glycemic quality, and calculate custom meal recipes fitting my goals.';
 
     _textController.clear();
     setState(() {
-      _messages.add({'role': 'user', 'text': text});
+      _selectedImageBytes = null;
+      _selectedImageName = null;
+      _messages.add({
+        'role': 'user',
+        'text': promptText,
+        if (imageBytesToSend != null) 'image_base64': base64Encode(imageBytesToSend),
+      });
       _isLoading = true;
     });
 
@@ -149,30 +255,33 @@ class _AiNutritionistScreenState extends ConsumerState<AiNutritionistScreen> {
 
     final customApiKey = ref.read(geminiApiKeyProvider).valueOrNull;
 
-    // 1. Generate conversational response
+    // 1. Generate conversational response (with vision image if provided)
     final history = _messages.map((m) => {'role': m['role'] as String, 'text': m['text'] as String}).toList();
     final reply = await _aiService.chatConsultation(
       history: history,
-      userMessage: text,
+      userMessage: promptText,
       profile: widget.profile,
       activeMission: widget.activeMission,
       customApiKey: customApiKey,
+      imageBytes: imageBytesToSend,
     );
 
-    // 2. Generate structured meal proposals if requesting plan
+    // 2. Generate structured meal proposals if requesting plan or scanned an image
     List<MealRecipe> generatedForThisMessage = [];
-    if (text.toLowerCase().contains('plan') ||
-        text.toLowerCase().contains('menu') ||
-        text.toLowerCase().contains('meal') ||
-        text.toLowerCase().contains('recipe') ||
-        text.toLowerCase().contains('cutting') ||
-        text.toLowerCase().contains('bulking') ||
+    if (imageBytesToSend != null ||
+        promptText.toLowerCase().contains('plan') ||
+        promptText.toLowerCase().contains('menu') ||
+        promptText.toLowerCase().contains('meal') ||
+        promptText.toLowerCase().contains('recipe') ||
+        promptText.toLowerCase().contains('cutting') ||
+        promptText.toLowerCase().contains('bulking') ||
         presetText != null) {
       generatedForThisMessage = await _aiService.generateCustomMealPlan(
         profile: widget.profile,
         activeMission: widget.activeMission,
-        userPreferences: text,
+        userPreferences: promptText,
         customApiKey: customApiKey,
+        imageBytes: imageBytesToSend,
       );
     }
 
@@ -301,6 +410,7 @@ class _AiNutritionistScreenState extends ConsumerState<AiNutritionistScreen> {
                 itemBuilder: (context, index) {
                   final msg = _messages[index];
                   final isUser = msg['role'] == 'user';
+                  final imageBase64 = msg['image_base64'] as String?;
                   final rawRecipes = msg['recipes'] as List<dynamic>?;
                   final recipes = (rawRecipes != null && rawRecipes.isNotEmpty)
                       ? rawRecipes
@@ -322,13 +432,30 @@ class _AiNutritionistScreenState extends ConsumerState<AiNutritionistScreen> {
                             borderRadius: BorderRadius.circular(14),
                             border: isUser ? null : Border.all(color: AppColors.glassBorder),
                           ),
-                          child: Text(
-                            msg['text'] as String,
-                            style: TextStyle(
-                              color: isUser ? Colors.white : AppColors.textPrimary,
-                              fontSize: 14,
-                              height: 1.4,
-                            ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (imageBase64 != null) ...[
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Image.memory(
+                                    base64Decode(imageBase64),
+                                    width: 180,
+                                    height: 180,
+                                    fit: BoxFit.cover,
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
+                              ],
+                              Text(
+                                msg['text'] as String,
+                                style: TextStyle(
+                                  color: isUser ? Colors.white : AppColors.textPrimary,
+                                  fontSize: 14,
+                                  height: 1.4,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
@@ -350,7 +477,60 @@ class _AiNutritionistScreenState extends ConsumerState<AiNutritionistScreen> {
                   children: [
                     SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation(AppColors.emerald))),
                     SizedBox(width: 10),
-                    Text('Panda AI is computing glycemic formulas...', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
+                    Text('Panda AI is analyzing macros & computing recipes...', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
+                  ],
+                ),
+              ),
+
+            // Selected Image Preview Banner
+            if (_selectedImageBytes != null)
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceElevated,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.emerald.withValues(alpha: 0.5)),
+                ),
+                child: Row(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(6),
+                      child: Image.memory(
+                        _selectedImageBytes!,
+                        width: 44,
+                        height: 44,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            '📸 Nutrition Label Attached',
+                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.emeraldLight),
+                          ),
+                          Text(
+                            _selectedImageName ?? 'label_photo.jpg',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close, color: AppColors.textMuted, size: 18),
+                      tooltip: 'Remove Image',
+                      onPressed: () {
+                        setState(() {
+                          _selectedImageBytes = null;
+                          _selectedImageName = null;
+                        });
+                      },
+                    ),
                   ],
                 ),
               ),
@@ -372,20 +552,31 @@ class _AiNutritionistScreenState extends ConsumerState<AiNutritionistScreen> {
 
             // Input Bar
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
               decoration: const BoxDecoration(
                 color: AppColors.surface,
                 border: Border(top: BorderSide(color: AppColors.glassBorder)),
               ),
               child: Row(
                 children: [
+                  IconButton(
+                    icon: Icon(
+                      Icons.camera_alt_outlined,
+                      color: _selectedImageBytes != null ? AppColors.emeraldLight : AppColors.textSecondary,
+                      size: 22,
+                    ),
+                    tooltip: 'Scan Nutrition Label / Product Photo',
+                    onPressed: _showImageSourceDialog,
+                  ),
                   Expanded(
                     child: TextField(
                       controller: _textController,
                       style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
-                      decoration: const InputDecoration(
-                        hintText: 'Ask Panda AI about meal ideas or preferences...',
-                        contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      decoration: InputDecoration(
+                        hintText: _selectedImageBytes != null
+                            ? 'Add instructions for this label (optional)...'
+                            : 'Ask Panda AI or attach a label photo...',
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                         border: InputBorder.none,
                         enabledBorder: InputBorder.none,
                         focusedBorder: InputBorder.none,

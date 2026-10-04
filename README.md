@@ -31,7 +31,7 @@ Runs seamlessly on **Web**, **Android**, and **iOS** from a single Flutter & Dar
 
 - **📊 7-Day Rolling Moving Average:** Filters water weight fluctuations and visualizes real biological progress with interactive `fl_chart` curves.
 - **🎯 Cutting & Bulking Missions:** Strict mathematical inequality completion milestones (`< target` for cutting, `> target` for bulking) with instant celebration confetti and archival.
-- **🐼 Panda Eats AI Coach:** Interactive conversational AI powered by Google Gemini (with smart multi-model fallback and secure on-device API key setup) that crafts personalized, raw/dry weighed meals matching your glycemic profile and caloric targets, with inline meal card persistence and one-click saving to your personal menu.
+- **🐼 Panda Eats AI Coach & Vision Label Scanner:** Multimodal conversational AI powered by Google Gemini (with smart multi-model fallback and secure on-device API key setup) that can scan photos of food nutrition labels or products (Camera/Gallery), extract exact macronutrients per 100g, and craft personalized raw/dry weighed meals matching your glycemic profile and caloric targets, with inline meal card persistence and one-click saving to your personal menu.
 - **🥗 Custom Recipe & Personal Menu Manager:** Create, edit, and organize custom breakfast, snack, and dinner recipes with accurate raw/dry weighing tags and automatic macro calculations.
 - **⚡ Fast Daily Logger & Pessimistic Calorie Engine:** Morning weigh-in, dynamic dinner selection from your personalized menu, swimming & workout logging with science-backed pessimistic MET calorie burn discounting.
 

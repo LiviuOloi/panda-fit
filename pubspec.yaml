@@ -30,6 +30,9 @@ dependencies:
   # Icons & Media
   lucide_icons: ^0.257.0
 
+  # Media & Image Picking
+  image_picker: ^1.1.2
+
   # Date & Number Formatting
   intl: ^0.20.2
 

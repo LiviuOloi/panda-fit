@@ -171,6 +171,7 @@ model MealRecipe {
    * Input Calorii (Ingerate, Consumate) cu calcul automat al caloriilor nete.
 
 3. **Panda Eats AI Coach & Personal Recipe Manager:**
+   * **Scanare Etichetă & Analiză Multimodală (Computer Vision):** Trimitere poze cu etichete nutriționale / produse direct din cameră sau galerie. Extragere automată macronutrienți per 100g și calcul porții cântărite pentru obiectivele curente.
    * **Chat Interactiv AI:** Consultanță nutrițională personalizată în funcție de BMR, TDEE și target caloric.
    * **Generare Meniuri Tailored:** Sugestii de mese cu ingrediente cântărite crud/uscat și respectarea încărcăturii glicemice.
    * **Carduri Inline Persistente:** Meniurile generate sunt atașate fiecărui răspuns și salvate persistent în istoricul conversației.

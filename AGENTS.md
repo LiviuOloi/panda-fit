@@ -125,11 +125,12 @@ The user works toward structured **Missions**:
   - Nutrition adherence flag (`plan_followed: bool`)
   - Notes for exercise sets, gym logs, or deviations.
 
-### 4.5 Panda Eats AI Coach & Dynamic Meal Generation
-* **Live Gemini API Integration:**
+### 4.5 Panda Eats AI Coach, Multimodal Label Scanning & Dynamic Meal Generation
+* **Live Gemini API Integration & Computer Vision:**
   - Dynamic user consultation using Google Gemini (`google_generative_ai`).
   - Automatic model fallback cascade: `gemini-1.5-flash-latest` $\rightarrow$ `gemini-1.5-flash` $\rightarrow$ `gemini-2.0-flash` $\rightarrow$ `gemini-pro` $\rightarrow$ Offline Rule-Based Engine.
   - Multi-turn conversation protocol: History turns must strictly begin with `role: 'user'`, never `role: 'model'`.
+  - Multimodal Vision Support: Users can attach photos of food nutrition labels or food items (`image_picker` Camera / Gallery). Photos are passed via `DataPart('image/jpeg', imageBytes)` to Gemini for macronutrient extraction (Calories, Protein, Carbs, Sugars, Fat, Fiber per 100g) and custom recipe synthesis with weighed portions.
   - Proposed meal proposals are attached inline per AI message turn, preserving all historical recipe sets across turns.
   - User API key is configured seamlessly via `GeminiApiKeyDialog` with 3-step guide and persisted locally via `gemini_api_key_provider.dart`.
 
