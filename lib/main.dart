@@ -9,10 +9,12 @@ import 'features/missions/presentation/missions_screen.dart';
 import 'features/nutrition_guide/presentation/nutrition_guide_screen.dart';
 import 'features/profile/presentation/profile_screen.dart';
 
+import 'features/auth/presentation/session_gate.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize Supabase (with fallback if keys not provided)
+  // Initialize Supabase
   await SupabaseService.initialize();
 
   runApp(
@@ -31,7 +33,7 @@ class PandaFitApp extends StatelessWidget {
       title: 'PandaFit',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.darkTheme,
-      home: const MainNavigationScreen(),
+      home: const SessionGate(),
     );
   }
 }

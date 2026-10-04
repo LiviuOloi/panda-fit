@@ -8,21 +8,20 @@ Runs seamlessly on **Web**, **Android**, and **iOS** from a single Flutter & Dar
 
 ## 📚 Core Documentation Index
 
-- **[PandaFit.md](file:///c:/Users/George/Documents/panda-fit/PandaFit.md)** — Original product specification, domain rules, and meal guidelines.
-- **[AGENTS.md](file:///c:/Users/George/Documents/panda-fit/AGENTS.md)** — Master engineering guardrails, strict mathematical invariants, agent operating protocols, and Definition of Done.
-- **[ARCHITECTURE.md](file:///c:/Users/George/Documents/panda-fit/ARCHITECTURE.md)** — System architecture diagrams, state pipelines (Riverpod), offline-first caching, navigation tree, and design tokens.
-- **[supabase/schema.sql](file:///c:/Users/George/Documents/panda-fit/supabase/schema.sql)** — Production DDL schema with Row Level Security (RLS) policies and PostgreSQL triggers.
-- **[supabase/seed.sql](file:///c:/Users/George/Documents/panda-fit/supabase/seed.sql)** — Pre-populated nutrition templates (Breakfast, Snack, Dinner options A, B, C).
+- **[PandaFit.md](PandaFit.md)** — Original product specification, domain rules, and meal guidelines.
+- **[AGENTS.md](AGENTS.md)** — Master engineering guardrails, strict mathematical invariants, agent operating protocols, and Definition of Done.
+- **[ARCHITECTURE.md](ARCHITECTURE.md)** — System architecture diagrams, state pipelines (Riverpod), offline-first caching, navigation tree, and design tokens.
+- **[supabase/schema.sql](supabase/schema.sql)** — Production DDL schema with Row Level Security (RLS) policies, triggers, and meal seeds.
 
 ---
 
-## 🛠️ Tech Stack (100% Free)
+## 🛠️ Tech Stack (100% Free & Open Source)
 
-- **Framework:** [Flutter 3.32+](https://flutter.dev) & Dart 3.8+
+- **Framework:** [Flutter 3.47+](https://flutter.dev) & Dart 3.13+
 - **Backend & Cloud DB:** [Supabase](https://supabase.com) (PostgreSQL 15+, Auth, Realtime, RLS)
 - **State Management:** [Flutter Riverpod](https://riverpod.dev)
-- **Charts:** [`fl_chart`](https://pub.dev/packages/fl_chart)
-- **Offline Storage:** `hive` / `shared_preferences`
+- **Data Visualization:** [`fl_chart`](https://pub.dev/packages/fl_chart)
+- **Offline Storage:** `shared_preferences`
 - **Design System:** Material 3 Dark & Glassmorphism Theme (Emerald, Cyan, Slate, Amber)
 
 ---
@@ -32,15 +31,17 @@ Runs seamlessly on **Web**, **Android**, and **iOS** from a single Flutter & Dar
 ### 1. Database Setup
 1. Create a free project at [supabase.com](https://supabase.com).
 2. Go to the **SQL Editor** in the Supabase Dashboard.
-3. Paste and run the contents of [supabase/schema.sql](file:///c:/Users/George/Documents/panda-fit/supabase/schema.sql).
-4. Run [supabase/seed.sql](file:///c:/Users/George/Documents/panda-fit/supabase/seed.sql) to populate meal templates.
+3. Paste and run the contents of [supabase/schema.sql](supabase/schema.sql) (includes tables, RLS, triggers, and seed recipes).
 
 ### 2. Environment Configuration
-Copy `.env.example` to `.env` or inject via `--dart-define`:
-```bash
-flutter run -d chrome --dart-define=SUPABASE_URL=YOUR_URL --dart-define=SUPABASE_ANON_KEY=YOUR_KEY
+Create a `.env` file in the root directory:
+```env
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_ANON_KEY=your-anon-key
 ```
 
 ### 3. Run the App
 - **Web:** `flutter run -d chrome`
-- **Android:** `flutter run -d android`
+- **Unit Tests:** `flutter test`
+- **Static Analysis:** `flutter analyze`
+

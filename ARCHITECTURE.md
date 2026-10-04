@@ -212,3 +212,31 @@ graph LR
 ```
 
 By computing moving averages and deltas through pure **derived Riverpod providers**, UI components never re-calculate complex math in their render trees, guaranteeing smooth 60fps animations and instant chart rendering.
+
+---
+
+## 8. Authentication & Onboarding Session Lifecycle
+
+PandaFit uses a reactive **SessionGate** to orchestrate seamless authentication and onboarding transitions:
+
+```mermaid
+graph TD
+    A[App Launch / main.dart] --> B[SessionGate]
+    B --> C{Active Supabase Session?}
+    C -- No / Signed Out --> D[AuthScreen: Sign In / Sign Up]
+    C -- Yes --> E{Profile exists in PostgreSQL?}
+    E -- Fetching --> F[Loading Spinner / Syncing Metrics]
+    E -- No Profile --> G[OnboardingWizardScreen: 3 Steps]
+    E -- Profile Found --> H[MainNavigationScreen: 5 Modules]
+    
+    G -->|Create Profile + Active Mission| E
+    D -->|Supabase Auth Callback| C
+```
+
+### Onboarding Invariant Enforcements:
+1. **Starting Weight Immutability (`profile_start_weight`):** Set once during onboarding. Validated to `0.1 kg` precision. Trigger-locked in PostgreSQL once daily entries begin.
+2. **First Mission Directionality:**
+   - **Cutting:** Requires $\text{Target Weight} < \text{Start Weight}$.
+   - **Bulking:** Requires $\text{Target Weight} > \text{Start Weight}$.
+   - $\text{Target Weight} == \text{Start Weight}$ is strictly rejected at the validation layer.
+3. **Dynamic Age Derivation:** Derived strictly from `birth_date` and calendar anniversary, never stored as a static integer.
