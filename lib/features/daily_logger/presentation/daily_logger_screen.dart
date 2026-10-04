@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/utils/activity_calories_calculator.dart';
 import '../../../../core/utils/calculation_engine.dart';
 import '../../../../core/widgets/glass_card.dart';
 import '../../../../core/widgets/panda_button.dart';
@@ -24,22 +25,33 @@ class _DailyLoggerScreenState extends ConsumerState<DailyLoggerScreen> {
   final _weightController = TextEditingController();
   final _caloriesInController = TextEditingController(text: '0');
   final _caloriesOutController = TextEditingController(text: '0');
-  final _notesController = TextEditingController();
 
   final Set<String> _consumedMealIds = {};
+  final List<LoggedActivity> _loggedActivities = [];
   bool _swimming = false;
-  bool _planFollowed = true;
   String _selectedDinner = 'NONE';
   bool _isInitialized = false;
   bool _isSaving = false;
 
   @override
+  void initState() {
+    super.initState();
+    _weightController.addListener(_onWeightChanged);
+  }
+
+  @override
   void dispose() {
+    _weightController.removeListener(_onWeightChanged);
     _weightController.dispose();
     _caloriesInController.dispose();
     _caloriesOutController.dispose();
-    _notesController.dispose();
     super.dispose();
+  }
+
+  void _onWeightChanged() {
+    if (_loggedActivities.isNotEmpty) {
+      _recalculateCaloriesOut();
+    }
   }
 
   void _prefillDataIfNeeded() {
@@ -53,6 +65,9 @@ class _DailyLoggerScreenState extends ConsumerState<DailyLoggerScreen> {
       _weightController.text = entries.first.weight!.toStringAsFixed(1);
       if (entries.first.caloriesIn != null) {
         _caloriesInController.text = entries.first.caloriesIn!.toString();
+      }
+      if (entries.first.caloriesOut != null) {
+        _caloriesOutController.text = entries.first.caloriesOut!.toString();
       }
       _isInitialized = true;
     } else if (profile != null) {
@@ -91,6 +106,48 @@ class _DailyLoggerScreenState extends ConsumerState<DailyLoggerScreen> {
     });
   }
 
+  void _addActivity() {
+    setState(() {
+      _loggedActivities.add(
+        LoggedActivity(
+          id: DateTime.now().microsecondsSinceEpoch.toString(),
+          activityType: PhysicalActivityType.weightlifting,
+          durationMinutes: 45,
+          isDurationMode: true,
+        ),
+      );
+      _recalculateCaloriesOut();
+    });
+  }
+
+  void _removeActivity(String id) {
+    setState(() {
+      _loggedActivities.removeWhere((act) => act.id == id);
+      _recalculateCaloriesOut();
+    });
+  }
+
+  void _recalculateCaloriesOut() {
+    final rawWeight = double.tryParse(_weightController.text);
+    final profile = ref.read(userProfileProvider).value;
+    final currentWeight = rawWeight ?? profile?.profileStartWeight ?? 80.0;
+
+    int totalBurned = 0;
+    bool hasSwimming = false;
+
+    for (final act in _loggedActivities) {
+      totalBurned += act.getCalories(currentWeight);
+      if (act.activityType.isSwimming) {
+        hasSwimming = true;
+      }
+    }
+
+    setState(() {
+      _swimming = hasSwimming;
+      _caloriesOutController.text = totalBurned.toString();
+    });
+  }
+
   Future<void> _saveEntry() async {
     final user = ref.read(currentUserProvider);
     if (user == null) return;
@@ -123,12 +180,12 @@ class _DailyLoggerScreenState extends ConsumerState<DailyLoggerScreen> {
         entryDate: todayDate,
         weight: roundedWeight,
         swimming: _swimming,
-        planFollowed: _planFollowed,
+        planFollowed: true,
         caloriesIn: calIn,
         caloriesOut: calOut,
         netCalories: netCal,
         selectedDinner: _selectedDinner,
-        notes: _notesController.text.trim().isNotEmpty ? _notesController.text.trim() : null,
+        notes: null,
         createdAt: DateTime.now().toUtc(),
         updatedAt: DateTime.now().toUtc(),
       );
@@ -145,7 +202,7 @@ class _DailyLoggerScreenState extends ConsumerState<DailyLoggerScreen> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Morning log of ${roundedWeight.toStringAsFixed(1)} kg and $calIn kcal saved!'),
+          content: Text('Log saved! Weight: ${roundedWeight.toStringAsFixed(1)} kg | In: $calIn kcal | Burned: $calOut kcal'),
           backgroundColor: AppColors.emerald,
         ),
       );
@@ -175,6 +232,8 @@ class _DailyLoggerScreenState extends ConsumerState<DailyLoggerScreen> {
 
     final profile = ref.watch(userProfileProvider).value;
     final activeMission = ref.watch(activeMissionProvider).value;
+    final rawWeight = double.tryParse(_weightController.text);
+    final effectiveWeight = rawWeight ?? profile?.profileStartWeight ?? 80.0;
 
     return Scaffold(
       body: SafeArea(
@@ -361,41 +420,73 @@ class _DailyLoggerScreenState extends ConsumerState<DailyLoggerScreen> {
               ),
               const SizedBox(height: 16),
 
-              // 3. Activity & Adherence Flags (Swapped above Energy Balance)
+              // 3. Daily Physical Activities
               GlassCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Daily Activity & Adherence',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimary,
-                      ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Daily Physical Activities',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                              SizedBox(height: 4),
+                              Text(
+                                'Log duration or calories to automatically accumulate calories out',
+                                style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+                              ),
+                            ],
+                          ),
+                        ),
+                        TextButton.icon(
+                          onPressed: _addActivity,
+                          icon: const Icon(Icons.add_circle_outline, color: AppColors.cyan, size: 18),
+                          label: const Text(
+                            'Add',
+                            style: TextStyle(color: AppColors.cyan, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 12),
-                    SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      thumbColor: WidgetStateProperty.resolveWith(
-                        (states) => states.contains(WidgetState.selected) ? AppColors.cyan : null,
+                    if (_loggedActivities.isEmpty)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+                        decoration: BoxDecoration(
+                          color: AppColors.surfaceElevated.withValues(alpha: 0.5),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: AppColors.glassBorder,
+                          ),
+                        ),
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.fitness_center_outlined, color: AppColors.textMuted, size: 20),
+                            SizedBox(width: 8),
+                            Text(
+                              'No workout logged today. Tap "Add" to select an activity.',
+                              style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+                            ),
+                          ],
+                        ),
+                      )
+                    else
+                      Column(
+                        children: _loggedActivities.map((activity) {
+                          return _buildActivityCard(activity, effectiveWeight);
+                        }).toList(),
                       ),
-                      title: const Text('Swimming Session', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                      subtitle: const Text('Logged active pool workout', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
-                      value: _swimming,
-                      onChanged: (val) => setState(() => _swimming = val),
-                    ),
-                    const Divider(color: AppColors.surfaceElevated),
-                    SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      thumbColor: WidgetStateProperty.resolveWith(
-                        (states) => states.contains(WidgetState.selected) ? AppColors.emerald : null,
-                      ),
-                      title: const Text('Nutrition Plan Followed', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                      subtitle: const Text('Weighed foods and raw proteins as prescribed', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
-                      value: _planFollowed,
-                      onChanged: (val) => setState(() => _planFollowed = val),
-                    ),
                   ],
                 ),
               ),
@@ -446,7 +537,13 @@ class _DailyLoggerScreenState extends ConsumerState<DailyLoggerScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text('Calories Out (Burned)', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                              const Row(
+                                children: [
+                                  Text('Calories Out (Burned)', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                                  SizedBox(width: 4),
+                                  Icon(Icons.auto_awesome, size: 12, color: AppColors.cyanLight),
+                                ],
+                              ),
                               const SizedBox(height: 6),
                               TextField(
                                 controller: _caloriesOutController,
@@ -463,23 +560,6 @@ class _DailyLoggerScreenState extends ConsumerState<DailyLoggerScreen> {
                       ],
                     ),
                   ],
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // 5. Notes / Deviations
-              GlassCard(
-                child: TextField(
-                  controller: _notesController,
-                  maxLines: 3,
-                  decoration: const InputDecoration(
-                    labelText: 'Gym sets, recovery, or notes',
-                    alignLabelWithHint: true,
-                    filled: false,
-                    border: InputBorder.none,
-                    enabledBorder: InputBorder.none,
-                    focusedBorder: InputBorder.none,
-                  ),
                 ),
               ),
               const SizedBox(height: 24),
@@ -561,6 +641,197 @@ class _DailyLoggerScreenState extends ConsumerState<DailyLoggerScreen> {
             style: const TextStyle(color: AppColors.cyanLight, fontSize: 11, fontWeight: FontWeight.w600),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildActivityCard(LoggedActivity activity, double weightKg) {
+    final estimatedBurn = activity.getCalories(weightKg);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceElevated,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.glassBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Row 1: Dropdown & Delete
+          Row(
+            children: [
+              Expanded(
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<PhysicalActivityType>(
+                    isExpanded: true,
+                    dropdownColor: AppColors.surfaceElevated,
+                    value: activity.activityType,
+                    items: PhysicalActivityType.values.map((type) {
+                      return DropdownMenuItem<PhysicalActivityType>(
+                        value: type,
+                        child: Row(
+                          children: [
+                            Icon(type.icon, color: AppColors.cyan, size: 18),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                type.displayName,
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  color: AppColors.textPrimary,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                    onChanged: (newType) {
+                      if (newType != null) {
+                        setState(() {
+                          activity.activityType = newType;
+                          _recalculateCaloriesOut();
+                        });
+                      }
+                    },
+                  ),
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.delete_outline, color: AppColors.rose, size: 18),
+                visualDensity: VisualDensity.compact,
+                onPressed: () => _removeActivity(activity.id),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+
+          // Row 2: Mode Selector & Value Input
+          Row(
+            children: [
+              // Segmented Duration vs Direct
+              Container(
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Row(
+                  children: [
+                    InkWell(
+                      onTap: () {
+                        setState(() {
+                          activity.isDurationMode = true;
+                          _recalculateCaloriesOut();
+                        });
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: activity.isDurationMode ? AppColors.cyan.withValues(alpha: 0.2) : Colors.transparent,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          '⏱️ Duration',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: activity.isDurationMode ? FontWeight.bold : FontWeight.normal,
+                            color: activity.isDurationMode ? AppColors.cyanLight : AppColors.textMuted,
+                          ),
+                        ),
+                      ),
+                    ),
+                    InkWell(
+                      onTap: () {
+                        setState(() {
+                          activity.isDurationMode = false;
+                          _recalculateCaloriesOut();
+                        });
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: !activity.isDurationMode ? AppColors.emerald.withValues(alpha: 0.2) : Colors.transparent,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          '🔥 Direct kcal',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: !activity.isDurationMode ? FontWeight.bold : FontWeight.normal,
+                            color: !activity.isDurationMode ? AppColors.emeraldLight : AppColors.textMuted,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+
+              // Value Input Field
+              Expanded(
+                child: activity.isDurationMode
+                    ? TextFormField(
+                        initialValue: activity.durationMinutes.toString(),
+                        keyboardType: TextInputType.number,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                          LengthLimitingTextInputFormatter(3),
+                        ],
+                        decoration: const InputDecoration(
+                          isDense: true,
+                          contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                          suffixText: 'min',
+                        ),
+                        onChanged: (val) {
+                          activity.durationMinutes = int.tryParse(val) ?? 0;
+                          _recalculateCaloriesOut();
+                        },
+                      )
+                    : TextFormField(
+                        initialValue: activity.customCalories?.toString() ?? '',
+                        keyboardType: TextInputType.number,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                          LengthLimitingTextInputFormatter(4),
+                        ],
+                        decoration: const InputDecoration(
+                          isDense: true,
+                          contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                          suffixText: 'kcal',
+                          hintText: 'e.g. 350',
+                        ),
+                        onChanged: (val) {
+                          activity.customCalories = int.tryParse(val);
+                          _recalculateCaloriesOut();
+                        },
+                      ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+
+          // Row 3: Live Burn Badge
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              Text(
+                activity.isDurationMode
+                    ? '⚡ Pessimistic estimate: ~$estimatedBurn kcal'
+                    : '🔥 Direct burn logged: $estimatedBurn kcal',
+                style: const TextStyle(
+                  color: AppColors.cyanLight,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
