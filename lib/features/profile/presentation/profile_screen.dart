@@ -1,27 +1,30 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/widgets/glass_card.dart';
 import '../../../../core/widgets/panda_button.dart';
-import '../domain/profile_model.dart';
+import '../../auth/presentation/auth_controller.dart';
+import 'profile_controller.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final profile = UserProfile(
-      id: 'u-1',
-      username: 'liviu_panda',
-      firstName: 'Liviu',
-      lastName: 'Oloi',
-      sex: 'MALE',
-      birthDate: DateTime(1994, 6, 15),
-      heightCm: 182.0,
-      profileStartWeight: 104.2,
-      dailyTargetCalories: 2300,
-      createdAt: DateTime(2026, 1, 1),
-      updatedAt: DateTime.now(),
-    );
+  Widget build(BuildContext context, WidgetRef ref) {
+    final profileAsync = ref.watch(userProfileProvider);
+    final entriesAsync = ref.watch(dailyEntriesProvider);
+
+    final profile = profileAsync.value;
+    final entries = entriesAsync.value ?? [];
+    final hasDailyEntries = entries.isNotEmpty;
+
+    if (profile == null) {
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(color: AppColors.emerald),
+        ),
+      );
+    }
 
     return Scaffold(
       body: SafeArea(
@@ -62,26 +65,28 @@ class ProfileScreen extends StatelessWidget {
                       child: const Icon(Icons.person, size: 36, color: AppColors.emerald),
                     ),
                     const SizedBox(width: 16),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          profile.fullName,
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.textPrimary,
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            profile.fullName.isNotEmpty ? profile.fullName : profile.username,
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.textPrimary,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '@${profile.username} · ${profile.age} years old',
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: AppColors.textSecondary,
+                          const SizedBox(height: 4),
+                          Text(
+                            '@${profile.username} · ${profile.age} years old',
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: AppColors.textSecondary,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ],
                 ),
@@ -111,13 +116,13 @@ class ProfileScreen extends StatelessWidget {
                             color: AppColors.amber.withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(6),
                           ),
-                          child: const Row(
+                          child: Row(
                             children: [
-                              Icon(Icons.lock, size: 12, color: AppColors.amber),
-                              SizedBox(width: 4),
+                              Icon(hasDailyEntries ? Icons.lock : Icons.lock_open, size: 12, color: AppColors.amber),
+                              const SizedBox(width: 4),
                               Text(
-                                'LOCKED',
-                                style: TextStyle(
+                                hasDailyEntries ? 'LOCKED' : 'INITIAL BASELINE',
+                                style: const TextStyle(
                                   color: AppColors.amber,
                                   fontSize: 10,
                                   fontWeight: FontWeight.bold,
@@ -138,9 +143,11 @@ class ProfileScreen extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 6),
-                    const Text(
-                      'Domain Invariant: Immutable once first daily entry is logged. Subsequent daily entries do not overwrite start weight.',
-                      style: TextStyle(fontSize: 11, color: AppColors.textMuted, height: 1.3),
+                    Text(
+                      hasDailyEntries
+                          ? 'Domain Invariant: Strictly locked because daily logs exist. Subsequent daily weigh-ins will never mutate start weight.'
+                          : 'Domain Invariant: Editable until your first daily entry is logged.',
+                      style: const TextStyle(fontSize: 11, color: AppColors.textMuted, height: 1.3),
                     ),
                   ],
                 ),
@@ -167,7 +174,9 @@ class ProfileScreen extends StatelessWidget {
                 icon: Icons.logout,
                 variant: PandaButtonVariant.outline,
                 width: double.infinity,
-                onPressed: () {},
+                onPressed: () async {
+                  await ref.read(authControllerProvider.notifier).signOut();
+                },
               ),
             ],
           ),

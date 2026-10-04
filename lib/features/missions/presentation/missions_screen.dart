@@ -1,29 +1,30 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/widgets/glass_card.dart';
 import '../../../../core/widgets/panda_button.dart';
-import '../domain/mission_model.dart';
+import '../../missions/domain/mission_model.dart';
+import '../../profile/presentation/profile_controller.dart';
 
-class MissionsScreen extends StatelessWidget {
+class MissionsScreen extends ConsumerWidget {
   const MissionsScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    // Demo mission
-    final activeMission = Mission(
-      id: 'm-1',
-      userId: 'u-1',
-      missionType: MissionType.cutting,
-      missionStartWeight: 104.2,
-      targetWeight: 94.0,
-      startedAt: DateTime.now().subtract(const Duration(days: 30)),
-      createdAt: DateTime.now().subtract(const Duration(days: 30)),
-      updatedAt: DateTime.now(),
-    );
+  Widget build(BuildContext context, WidgetRef ref) {
+    final profileAsync = ref.watch(userProfileProvider);
+    final missionAsync = ref.watch(activeMissionProvider);
+    final entriesAsync = ref.watch(dailyEntriesProvider);
 
-    const currentWeight = 98.4;
-    final isAccomplished = activeMission.checkAccomplishment(currentWeight);
-    final progress = activeMission.progress(currentWeight);
+    final profile = profileAsync.value;
+    final activeMission = missionAsync.value;
+    final entries = entriesAsync.value ?? [];
+
+    final startWeight = activeMission?.missionStartWeight ?? (profile?.profileStartWeight ?? 100.0);
+    final latestEntry = entries.isNotEmpty ? entries.first : null;
+    final currentWeight = latestEntry?.weight ?? startWeight;
+    final isAccomplished = activeMission != null && activeMission.checkAccomplishment(currentWeight);
+    final progress = activeMission != null ? activeMission.progress(currentWeight) : 0.0;
+    final isCutting = activeMission?.missionType == MissionType.cutting;
 
     return Scaffold(
       body: SafeArea(
@@ -97,18 +98,22 @@ class MissionsScreen extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 16),
-                    const Text(
-                      'Cut Phase 1 — Metabolic Reset',
-                      style: TextStyle(
+                    Text(
+                      activeMission != null
+                          ? (isCutting ? 'Cutting Phase — Sustainable Fat Loss' : 'Bulking Phase — Lean Muscle Mass')
+                          : 'No active mission configured',
+                      style: const TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
                         color: AppColors.textPrimary,
                       ),
                     ),
                     const SizedBox(height: 6),
-                    const Text(
-                      'Mission Goal: Drop below 94.0 kg strictly to trigger completion.',
-                      style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                    Text(
+                      activeMission != null
+                          ? 'Mission Goal: Reach strictly ${isCutting ? "<" : ">"} ${activeMission.targetWeight} kg to trigger accomplishment.'
+                          : 'Configure your first mission to track milestone progress.',
+                      style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
                     ),
                     const SizedBox(height: 20),
 
@@ -116,7 +121,7 @@ class MissionsScreen extends StatelessWidget {
                     ClipRRect(
                       borderRadius: BorderRadius.circular(8),
                       child: LinearProgressIndicator(
-                        value: progress,
+                        value: progress.clamp(0.0, 1.0),
                         minHeight: 12,
                         backgroundColor: AppColors.surfaceElevated,
                         valueColor: const AlwaysStoppedAnimation<Color>(AppColors.emerald),
@@ -126,9 +131,12 @@ class MissionsScreen extends StatelessWidget {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text('Start: ${activeMission.missionStartWeight} kg', style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
-                        const Text('Current: 98.4 kg', style: TextStyle(color: AppColors.cyan, fontSize: 12, fontWeight: FontWeight.bold)),
-                        Text('Strict Target: < ${activeMission.targetWeight} kg', style: const TextStyle(color: AppColors.emeraldLight, fontSize: 12, fontWeight: FontWeight.bold)),
+                        Text('Start: $startWeight kg', style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                        Text('Current: $currentWeight kg', style: const TextStyle(color: AppColors.cyan, fontSize: 12, fontWeight: FontWeight.bold)),
+                        Text(
+                          activeMission != null ? 'Strict Target: ${isCutting ? "<" : ">"} ${activeMission.targetWeight} kg' : '-',
+                          style: const TextStyle(color: AppColors.emeraldLight, fontSize: 12, fontWeight: FontWeight.bold),
+                        ),
                       ],
                     ),
                   ],
@@ -157,7 +165,7 @@ class MissionsScreen extends StatelessWidget {
                           ),
                           SizedBox(height: 4),
                           Text(
-                            'A cutting mission requires weighing strictly less than the target weight (e.g. \u2264 93.9 kg for a 94.0 kg target). Tying the target does not trigger accomplishment.',
+                            'A cutting mission requires weighing strictly less than the target weight (e.g. \u2264 94.9 kg for a 95.0 kg target). Tying the target does not trigger accomplishment.',
                             style: TextStyle(
                               fontSize: 12,
                               color: AppColors.textSecondary,
@@ -178,7 +186,14 @@ class MissionsScreen extends StatelessWidget {
                 icon: Icons.flag_outlined,
                 variant: PandaButtonVariant.secondary,
                 width: double.infinity,
-                onPressed: () {},
+                onPressed: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Your active mission is already in progress. Log daily weights to track milestones!'),
+                      backgroundColor: AppColors.emerald,
+                    ),
+                  );
+                },
               ),
             ],
           ),

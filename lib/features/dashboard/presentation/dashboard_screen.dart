@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/utils/calculation_engine.dart';
 import '../../../../core/widgets/glass_card.dart';
 import '../../../../core/widgets/panda_button.dart';
+import '../../missions/domain/mission_model.dart';
+import '../../profile/presentation/profile_controller.dart';
 import '../widgets/metric_summary_card.dart';
 import '../widgets/weight_progress_chart.dart';
 
-class DashboardScreen extends StatelessWidget {
+class DashboardScreen extends ConsumerWidget {
   final VoidCallback onQuickLogPressed;
 
   const DashboardScreen({
@@ -14,24 +18,55 @@ class DashboardScreen extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    // Demo / Sample active metrics
-    const currentWeight = 98.4;
-    const movingAvg = 98.9;
-    const startWeight = 104.2;
-    const totalDelta = -5.8;
-    const targetWeight = 94.0;
-    const missionProgress = 0.56;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final profileAsync = ref.watch(userProfileProvider);
+    final missionAsync = ref.watch(activeMissionProvider);
+    final entriesAsync = ref.watch(dailyEntriesProvider);
 
-    final chartPoints = [
-      WeightChartDataPoint(date: DateTime.now().subtract(const Duration(days: 6)), rawWeight: 99.8, movingAvg7Days: 100.1),
-      WeightChartDataPoint(date: DateTime.now().subtract(const Duration(days: 5)), rawWeight: 99.2, movingAvg7Days: 99.8),
-      WeightChartDataPoint(date: DateTime.now().subtract(const Duration(days: 4)), rawWeight: 99.5, movingAvg7Days: 99.6),
-      WeightChartDataPoint(date: DateTime.now().subtract(const Duration(days: 3)), rawWeight: 98.9, movingAvg7Days: 99.3),
-      WeightChartDataPoint(date: DateTime.now().subtract(const Duration(days: 2)), rawWeight: 98.7, movingAvg7Days: 99.1),
-      WeightChartDataPoint(date: DateTime.now().subtract(const Duration(days: 1)), rawWeight: 98.6, movingAvg7Days: 99.0),
-      WeightChartDataPoint(date: DateTime.now(), rawWeight: 98.4, movingAvg7Days: 98.9),
-    ];
+    final profile = profileAsync.value;
+    final activeMission = missionAsync.value;
+    final entries = entriesAsync.value ?? [];
+
+    final startWeight = profile?.profileStartWeight ?? 100.0;
+    final latestEntry = entries.isNotEmpty ? entries.first : null;
+    final currentWeight = latestEntry?.weight ?? startWeight;
+    final movingAvg = latestEntry?.rollingAvg7Days ?? currentWeight;
+    final totalDelta = CalculationEngine.calculateTotalDelta(
+      currentWeight: currentWeight,
+      profileStartWeight: startWeight,
+    );
+
+    final targetWeight = activeMission?.targetWeight ?? (startWeight - 5.0);
+    final missionProgress = activeMission != null ? activeMission.progress(currentWeight) : 0.0;
+
+    final latestCaloriesIn = latestEntry?.caloriesIn ?? profile?.dailyTargetCalories ?? 2300;
+    final latestCaloriesOut = latestEntry?.caloriesOut ?? 0;
+    final netCalories = CalculationEngine.calculateNetCalories(
+      caloriesIn: latestCaloriesIn,
+      caloriesOut: latestCaloriesOut,
+    );
+
+    // Build chart data points from real chronological history
+    final List<WeightChartDataPoint> chartPoints;
+    if (entries.isNotEmpty) {
+      chartPoints = entries.reversed.map((e) {
+        return WeightChartDataPoint(
+          date: e.entryDate,
+          rawWeight: e.weight,
+          movingAvg7Days: e.rollingAvg7Days,
+        );
+      }).toList();
+    } else {
+      chartPoints = [
+        WeightChartDataPoint(
+          date: DateTime.now(),
+          rawWeight: startWeight,
+          movingAvg7Days: startWeight,
+        ),
+      ];
+    }
+
+    final isCutting = activeMission?.missionType == MissionType.cutting;
 
     return Scaffold(
       body: SafeArea(
@@ -58,9 +93,9 @@ class DashboardScreen extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(width: 8),
-                          const Text(
-                            'PANDAFIT ENGINE',
-                            style: TextStyle(
+                          Text(
+                            profile != null ? 'PANDAFIT · ${profile.firstName.toUpperCase()}' : 'PANDAFIT ENGINE',
+                            style: const TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.bold,
                               letterSpacing: 1.2,
@@ -118,9 +153,9 @@ class DashboardScreen extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(width: 8),
-                            const Text(
-                              'Cut Phase 1',
-                              style: TextStyle(
+                            Text(
+                              isCutting ? 'Cutting Phase (Fat Loss)' : 'Bulking Phase (Muscle Gain)',
+                              style: const TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 16,
                                 color: AppColors.textPrimary,
@@ -129,7 +164,7 @@ class DashboardScreen extends StatelessWidget {
                           ],
                         ),
                         Text(
-                          '${(missionProgress * 100).toInt()}%',
+                          '${(missionProgress * 100).clamp(0, 100).toInt()}%',
                           style: const TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 16,
@@ -139,21 +174,24 @@ class DashboardScreen extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 14),
-                    const ClipRRect(
-                      borderRadius: BorderRadius.all(Radius.circular(6)),
+                    ClipRRect(
+                      borderRadius: const BorderRadius.all(Radius.circular(6)),
                       child: LinearProgressIndicator(
-                        value: missionProgress,
+                        value: missionProgress.clamp(0.0, 1.0),
                         minHeight: 8,
                         backgroundColor: AppColors.surfaceElevated,
-                        valueColor: AlwaysStoppedAnimation<Color>(AppColors.emerald),
+                        valueColor: const AlwaysStoppedAnimation<Color>(AppColors.emerald),
                       ),
                     ),
                     const SizedBox(height: 12),
-                    const Row(
+                    Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text('Start: 104.2 kg', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
-                        Text('Strict Target: < 94.0 kg', style: TextStyle(color: AppColors.emeraldLight, fontSize: 12, fontWeight: FontWeight.w600)),
+                        Text('Start: $startWeight kg', style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                        Text(
+                          'Strict Target: ${isCutting ? "<" : ">"} $targetWeight kg',
+                          style: const TextStyle(color: AppColors.emeraldLight, fontSize: 12, fontWeight: FontWeight.w600),
+                        ),
                       ],
                     ),
                   ],
@@ -172,19 +210,19 @@ class DashboardScreen extends StatelessWidget {
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                     childAspectRatio: isWide ? 1.4 : 1.15,
-                    children: const [
+                    children: [
                       MetricSummaryCard(
                         title: 'Morning Weight',
                         value: '$currentWeight kg',
-                        delta: '-0.2 kg',
-                        subtitle: 'vs yesterday',
+                        delta: entries.isNotEmpty ? '${totalDelta >= 0 ? "+" : ""}$totalDelta kg' : 'Baseline',
+                        subtitle: entries.isNotEmpty ? 'latest entry' : 'start baseline',
                         icon: Icons.scale,
                         accentColor: AppColors.cyan,
                       ),
                       MetricSummaryCard(
                         title: '7-Day Rolling MA',
                         value: '$movingAvg kg',
-                        delta: '-0.7 kg/wk',
+                        delta: '${(movingAvg - startWeight).toStringAsFixed(1)} kg',
                         subtitle: 'true fat trend',
                         icon: Icons.trending_down,
                         accentColor: AppColors.emerald,
@@ -192,15 +230,15 @@ class DashboardScreen extends StatelessWidget {
                       MetricSummaryCard(
                         title: 'Total Delta',
                         value: '${totalDelta >= 0 ? "+" : ""}$totalDelta kg',
-                        subtitle: 'from start (104.2k)',
+                        subtitle: 'from start ($startWeight kg)',
                         icon: Icons.flag,
                         accentColor: AppColors.amber,
                         delta: '$totalDelta kg',
                       ),
                       MetricSummaryCard(
                         title: 'Net Calories',
-                        value: '1,850 kcal',
-                        subtitle: '2,300 in · 450 out',
+                        value: '$netCalories kcal',
+                        subtitle: '$latestCaloriesIn in · $latestCaloriesOut out',
                         icon: Icons.local_fire_department,
                         accentColor: AppColors.rose,
                       ),

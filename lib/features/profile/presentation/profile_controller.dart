@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/network/supabase_client.dart';
 import '../../auth/presentation/auth_controller.dart';
+import '../../daily_logger/data/daily_entry_repository.dart';
+import '../../daily_logger/domain/daily_entry_model.dart';
 import '../../missions/data/missions_repository.dart';
 import '../../missions/domain/mission_model.dart';
 import '../data/profile_repository.dart';
@@ -14,11 +16,29 @@ final missionsRepositoryProvider = Provider<MissionsRepository>((ref) {
   return MissionsRepository(SupabaseService.client);
 });
 
+final dailyEntryRepositoryProvider = Provider<DailyEntryRepository>((ref) {
+  return DailyEntryRepository(SupabaseService.client);
+});
+
 final userProfileProvider = FutureProvider.autoDispose<UserProfile?>((ref) async {
   final user = ref.watch(currentUserProvider);
   if (user == null) return null;
   final repo = ref.watch(profileRepositoryProvider);
   return await repo.fetchProfile(user.id);
+});
+
+final activeMissionProvider = FutureProvider.autoDispose<Mission?>((ref) async {
+  final user = ref.watch(currentUserProvider);
+  if (user == null) return null;
+  final repo = ref.watch(missionsRepositoryProvider);
+  return await repo.fetchActiveMission(user.id);
+});
+
+final dailyEntriesProvider = FutureProvider.autoDispose<List<DailyEntry>>((ref) async {
+  final user = ref.watch(currentUserProvider);
+  if (user == null) return [];
+  final repo = ref.watch(dailyEntryRepositoryProvider);
+  return await repo.fetchRecentEntries(user.id, limit: 30);
 });
 
 class ProfileController extends StateNotifier<AsyncValue<void>> {
