@@ -153,34 +153,64 @@ Return ONLY a valid JSON array matching this exact schema without markdown wrap:
     final isCutting = activeMission.missionType == MissionType.cutting;
     final recommendedTarget = isCutting ? maintenance - 450 : maintenance + 300;
 
+    final dynamicSystemPrompt = '''
+$_systemPrompt
+
+CURRENT USER BIOMETRIC CONTEXT:
+- Name: ${profile.firstName}
+- Age: ${profile.age} years old
+- Sex: ${profile.sex}
+- Height: ${profile.heightCm} cm
+- Starting / Current Weight: ${profile.profileStartWeight} kg
+- Target Weight: ${activeMission.targetWeight} kg (${isCutting ? "CUTTING (-450 kcal deficit)" : "BULKING (+300 kcal lean surplus)"})
+- Basal Metabolic Rate (BMR): ~$bmr kcal/day
+- Maintenance TDEE: ~$maintenance kcal/day
+- Recommended Daily Target: ~$recommendedTarget kcal/day
+
+COACHING STYLE & INSTRUCTIONS:
+- You are an intelligent, empathetic, and natural AI coach for PandaFit.
+- Converse naturally and intelligently. If the user greets you or asks a general question, chat with them warmly and conversationally!
+- You can answer any questions on nutrition, workout routines, glycemic index, motivation, meal timing, or calorie deficit/surplus.
+- Keep answers concise, clear, and informative. Use markdown bolding and bullet points where helpful.
+- Respond in the language used by the user (English or Romanian).
+''';
+
     if (apiKey.isNotEmpty) {
       final validTurns = <Content>[];
-      bool foundFirstUser = false;
-      for (final msg in history) {
-        final isUser = msg['role'] == 'user';
-        final text = msg['text'] ?? '';
-        if (text.trim().isEmpty) continue;
-        if (!foundFirstUser && !isUser) {
-          continue; // Skip initial greeting from AI model to satisfy Gemini API constraints
+      String? lastRole;
+
+      for (int i = 0; i < history.length; i++) {
+        final m = history[i];
+        final role = m['role'] ?? '';
+        final text = (m['text'] ?? '').trim();
+        if (text.isEmpty) continue;
+
+        // Skip until the first user message
+        if (lastRole == null && role != 'user') continue;
+
+        // Ensure strict alternation (user -> model -> user -> model)
+        if (role == lastRole) continue;
+
+        if (role == 'user') {
+          validTurns.add(Content.text(text));
+          lastRole = 'user';
+        } else if (role == 'ai' || role == 'model') {
+          validTurns.add(Content.model([TextPart(text)]));
+          lastRole = 'model';
         }
-        foundFirstUser = true;
-        validTurns.add(isUser ? Content.text(text) : Content.model([TextPart(text)]));
       }
 
-      validTurns.add(
-        Content.text('''
-User: ${profile.firstName} (${profile.age}yo, ${profile.heightCm}cm, ${profile.profileStartWeight}kg -> target ${activeMission.targetWeight}kg ${activeMission.missionType.name.toUpperCase()}).
-BMR: $bmr kcal, Maintenance TDEE: $maintenance kcal, Target: $recommendedTarget kcal.
-User Query / Request: $userMessage
-'''),
-      );
+      // If validTurns is empty or ends with a model message, add the current userMessage
+      if (validTurns.isEmpty || lastRole != 'user') {
+        validTurns.add(Content.text(userMessage));
+      }
 
       for (final modelName in _candidateModels) {
         try {
           final model = GenerativeModel(
             model: modelName,
             apiKey: apiKey,
-            systemInstruction: Content.system(_systemPrompt),
+            systemInstruction: Content.system(dynamicSystemPrompt),
           );
 
           final response = await model.generateContent(validTurns);
@@ -355,12 +385,24 @@ User Query / Request: $userMessage
     final isCutting = activeMission.missionType == MissionType.cutting;
     final recommendedTarget = isCutting ? maintenance - 450 : maintenance + 300;
 
+    if (lower.contains('salut') || lower.contains('buna') || lower.contains('hello') || lower.contains('hi') || lower.contains('hey') || lower.startsWith('servus')) {
+      return 'Hello ${profile.firstName}! 👋 How are you feeling today? I am here to help you with meal ideas, macronutrient balancing, or any fitness questions for your ${isCutting ? 'cutting' : 'bulking'} mission (~$recommendedTarget kcal/day). What is on your mind?';
+    }
+
     if (lower.contains('menten') || lower.contains('tdee') || lower.contains('bmr') || lower.contains('calor')) {
       return '''
 📊 **PandaFit Metabolic Breakdown:**
 • **BMR (Basal Rest):** ~$bmr kcal/day
 • **Maintenance (TDEE):** ~$maintenance kcal/day
 • **Recommended Target (${activeMission.missionType.name.toUpperCase()}):** ~$recommendedTarget kcal/day ${isCutting ? '(-450 kcal fat loss deficit)' : '(+300 kcal lean bulk surplus)'}.''';
+    }
+
+    if (lower.contains('proteina') || lower.contains('protein') || lower.contains('gram')) {
+      final proteinTarget = (profile.profileStartWeight * 2.0).round();
+      return '''
+🥩 **Optimal Protein Guideline:**
+• For your profile (${profile.profileStartWeight} kg, ${isCutting ? 'Cutting' : 'Bulking'}), aim for **~$proteinTarget g protein/day** (~2.0g per kg of body weight).
+• Great clean sources: Raw weighed chicken breast (23g P / 100g), wild salmon (20g P / 100g), whole eggs (6g P / egg), 2% Greek yogurt (10g P / 100g), and light cottage cheese.''';
     }
 
     if (lower.contains('dairy') || lower.contains('lactate') || lower.contains('lactoza') || lower.contains('lactose')) {
@@ -391,7 +433,7 @@ User Query / Request: $userMessage
 *All measurements must strictly adhere to raw/dry state protocol!*''';
     }
 
-    return 'I have updated your meal plan for **${activeMission.missionType.name.toUpperCase()}** (~$recommendedTarget kcal/day). Check out your proposed meals below!';
+    return 'I am here with you, ${profile.firstName}! Whether you need nutrition coaching, meal suggestions, macro calculations, or motivation for your ${isCutting ? 'cutting' : 'bulking'} mission (~$recommendedTarget kcal/day), just let me know what you need!';
   }
 }
 
