@@ -63,24 +63,15 @@ class _AiNutritionistScreenState extends ConsumerState<AiNutritionistScreen> {
   Future<void> _loadChatHistory() async {
     try {
       final prefs = await SharedPreferences.getInstance();
+      // Remove deprecated separate recipes storage key if present
+      await prefs.remove(_recipesStorageKey);
+
       final rawMsgs = prefs.getString(_chatStorageKey);
-      final legacyRawRecipes = prefs.getString(_recipesStorageKey);
 
       if (rawMsgs != null) {
         final list = json.decode(rawMsgs) as List<dynamic>;
         if (list.isNotEmpty) {
           final loadedMessages = list.map((e) => Map<String, dynamic>.from(e as Map)).toList();
-          
-          // Migrate legacy unattached recipes if any
-          if (legacyRawRecipes != null && loadedMessages.isNotEmpty) {
-            final decodedLegacy = json.decode(legacyRawRecipes) as List<dynamic>;
-            if (decodedLegacy.isNotEmpty) {
-              final lastAiIndex = loadedMessages.lastIndexWhere((m) => m['role'] == 'ai');
-              if (lastAiIndex != -1 && loadedMessages[lastAiIndex]['recipes'] == null) {
-                loadedMessages[lastAiIndex]['recipes'] = decodedLegacy;
-              }
-            }
-          }
 
           setState(() {
             _messages.clear();
@@ -126,7 +117,7 @@ class _AiNutritionistScreenState extends ConsumerState<AiNutritionistScreen> {
     _setDefaultWelcome();
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('Started a fresh clean chat session!'),
+        content: Text('Sesiune nouă de chat pornită! 🐼'),
         backgroundColor: AppColors.emerald,
         duration: Duration(seconds: 2),
       ),
@@ -256,11 +247,10 @@ class _AiNutritionistScreenState extends ConsumerState<AiNutritionistScreen> {
 
     final customApiKey = ref.read(geminiApiKeyProvider).valueOrNull;
 
-    // Check if preset chips or explicit recipe cards are requested
-    final shouldGenerateCards = presetText != null ||
-        promptText.toLowerCase().contains('generate meal plan') ||
-        promptText.toLowerCase().contains('retete') ||
-        promptText.toLowerCase().contains('recipe cards');
+    // Generate structured database recipe cards only if specifically requested
+    final shouldGenerateCards = promptText.toLowerCase().contains('carduri retete') ||
+        promptText.toLowerCase().contains('recipe cards') ||
+        promptText.toLowerCase().contains('adauga card');
 
     final history = _messages.map((m) => {'role': m['role'] as String, 'text': m['text'] as String}).toList();
 
