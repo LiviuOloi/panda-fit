@@ -206,21 +206,13 @@ class MissionsScreen extends ConsumerWidget {
                 icon: isAccomplished ? Icons.rocket_launch : Icons.flag_outlined,
                 variant: isAccomplished ? PandaButtonVariant.primary : PandaButtonVariant.secondary,
                 width: double.infinity,
-                onPressed: () {
-                  showDialog<bool>(
-                    context: context,
-                    builder: (_) => NewMissionDialog(
-                      currentWeight: currentWeight,
-                      previousMission: activeMission,
-                      isPreviousAccomplished: isAccomplished,
-                    ),
-                  ).then((created) {
-                    if (created == true) {
-                      ref.invalidate(activeMissionProvider);
-                      ref.invalidate(allMissionsProvider);
-                    }
-                  });
-                },
+                onPressed: () => _handleConfigureMission(
+                  context,
+                  ref,
+                  currentWeight: currentWeight,
+                  activeMission: activeMission,
+                  isAccomplished: isAccomplished,
+                ),
               ),
               const SizedBox(height: 24),
 
@@ -381,5 +373,99 @@ class MissionsScreen extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _handleConfigureMission(
+    BuildContext context,
+    WidgetRef ref, {
+    required double currentWeight,
+    required Mission? activeMission,
+    required bool isAccomplished,
+  }) async {
+    if (activeMission != null && !isAccomplished) {
+      // Prompt user with active mission replacement confirmation dialog
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: AppColors.surfaceElevated,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: const BorderSide(color: AppColors.glassBorder),
+          ),
+          title: const Row(
+            children: [
+              Icon(Icons.warning_amber_rounded, color: AppColors.amber, size: 24),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Active Mission in Progress',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                ),
+              ),
+            ],
+          ),
+          content: Text(
+            'You already have an active ${activeMission.missionType.name.toUpperCase()} mission in progress (${activeMission.missionStartWeight} kg → ${activeMission.targetWeight} kg).\n\nStarting a new mission will terminate the current active mission and archive it. Are you sure you want to proceed?',
+            style: const TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.4),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Keep Current Mission', style: TextStyle(color: AppColors.textMuted)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.rose.withValues(alpha: 0.2),
+                foregroundColor: AppColors.rose,
+                side: const BorderSide(color: AppColors.rose),
+                elevation: 0,
+              ),
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('Abandon & Start New'),
+            ),
+          ],
+        ),
+      );
+
+      if (confirmed == true && context.mounted) {
+        _openNewMissionDialog(
+          context,
+          ref,
+          currentWeight: currentWeight,
+          activeMission: activeMission,
+          isAccomplished: false,
+        );
+      }
+    } else {
+      _openNewMissionDialog(
+        context,
+        ref,
+        currentWeight: currentWeight,
+        activeMission: activeMission,
+        isAccomplished: isAccomplished,
+      );
+    }
+  }
+
+  void _openNewMissionDialog(
+    BuildContext context,
+    WidgetRef ref, {
+    required double currentWeight,
+    required Mission? activeMission,
+    required bool isAccomplished,
+  }) {
+    showDialog<bool>(
+      context: context,
+      builder: (_) => NewMissionDialog(
+        currentWeight: currentWeight,
+        previousMission: activeMission,
+        isPreviousAccomplished: isAccomplished,
+      ),
+    ).then((created) {
+      if (created == true) {
+        ref.invalidate(activeMissionProvider);
+        ref.invalidate(allMissionsProvider);
+      }
+    });
   }
 }
