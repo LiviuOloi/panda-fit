@@ -6,12 +6,12 @@ class SupabaseService {
 
   static const String defaultUrl = String.fromEnvironment(
     'SUPABASE_URL',
-    defaultValue: 'https://placeholder-project.supabase.co',
+    defaultValue: 'https://grmgmxesbyrkbmustwfd.supabase.co',
   );
 
   static const String defaultAnonKey = String.fromEnvironment(
     'SUPABASE_ANON_KEY',
-    defaultValue: 'placeholder-anon-key',
+    defaultValue: 'sb_publishable_EixbwCeC7SaY1mUSAlZ1DA_8dXK3WkG',
   );
 
   static Future<void> initialize({String? url, String? anonKey}) async {
