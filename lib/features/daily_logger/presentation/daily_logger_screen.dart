@@ -5,7 +5,10 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../../core/utils/calculation_engine.dart';
 import '../../../../core/widgets/glass_card.dart';
 import '../../../../core/widgets/panda_button.dart';
+import '../../auth/presentation/auth_controller.dart';
 import '../../nutrition_guide/presentation/ai_nutritionist_screen.dart';
+import '../../profile/presentation/profile_controller.dart';
+import '../domain/daily_entry_model.dart';
 
 class DailyLoggerScreen extends ConsumerStatefulWidget {
   final VoidCallback? onSaved;
@@ -17,14 +20,16 @@ class DailyLoggerScreen extends ConsumerStatefulWidget {
 }
 
 class _DailyLoggerScreenState extends ConsumerState<DailyLoggerScreen> {
-  final _weightController = TextEditingController(text: '98.4');
+  final _weightController = TextEditingController();
   final _caloriesInController = TextEditingController(text: '2300');
-  final _caloriesOutController = TextEditingController(text: '450');
+  final _caloriesOutController = TextEditingController(text: '0');
   final _notesController = TextEditingController();
 
-  bool _swimming = true;
+  bool _swimming = false;
   bool _planFollowed = true;
   String _selectedDinner = 'CUSTOM';
+  bool _isInitialized = false;
+  bool _isSaving = false;
 
   @override
   void dispose() {
@@ -35,25 +40,109 @@ class _DailyLoggerScreenState extends ConsumerState<DailyLoggerScreen> {
     super.dispose();
   }
 
-  void _saveEntry() {
+  void _prefillDataIfNeeded() {
+    if (_isInitialized) return;
+
+    final profile = ref.read(userProfileProvider).value;
+    final entries = ref.read(dailyEntriesProvider).value ?? [];
+
+    if (entries.isNotEmpty && entries.first.weight != null) {
+      // Prefill with the most recent logged morning weight
+      _weightController.text = entries.first.weight!.toStringAsFixed(1);
+      if (entries.first.caloriesIn != null) {
+        _caloriesInController.text = entries.first.caloriesIn!.toString();
+      }
+      _isInitialized = true;
+    } else if (profile != null) {
+      // First time logging: prefill with account starting weight
+      _weightController.text = profile.profileStartWeight.toStringAsFixed(1);
+      _caloriesInController.text = profile.dailyTargetCalories.toString();
+      _isInitialized = true;
+    }
+  }
+
+  Future<void> _saveEntry() async {
+    final user = ref.read(currentUserProvider);
+    if (user == null) return;
+
     final rawWeight = double.tryParse(_weightController.text);
-    if (rawWeight != null) {
-      final rounded = CalculationEngine.roundWeight(rawWeight);
-      _weightController.text = rounded.toStringAsFixed(1);
+    if (rawWeight == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Te rugăm să introduci o greutate validă.'),
+          backgroundColor: AppColors.rose,
+        ),
+      );
+      return;
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Daily entry saved with 0.1 kg precision!'),
-        backgroundColor: AppColors.emerald,
-      ),
-    );
+    final roundedWeight = CalculationEngine.roundWeight(rawWeight);
+    final calIn = int.tryParse(_caloriesInController.text) ?? 2300;
+    final calOut = int.tryParse(_caloriesOutController.text) ?? 0;
+    final netCal = CalculationEngine.calculateNetCalories(caloriesIn: calIn, caloriesOut: calOut);
 
-    widget.onSaved?.call();
+    setState(() => _isSaving = true);
+
+    try {
+      final now = DateTime.now();
+      final todayDate = DateTime(now.year, now.month, now.day);
+
+      final entry = DailyEntry(
+        id: '',
+        userId: user.id,
+        entryDate: todayDate,
+        weight: roundedWeight,
+        swimming: _swimming,
+        planFollowed: _planFollowed,
+        caloriesIn: calIn,
+        caloriesOut: calOut,
+        netCalories: netCal,
+        selectedDinner: _selectedDinner,
+        notes: _notesController.text.trim().isNotEmpty ? _notesController.text.trim() : null,
+        createdAt: DateTime.now().toUtc(),
+        updatedAt: DateTime.now().toUtc(),
+      );
+
+      final repo = ref.read(dailyEntryRepositoryProvider);
+      await repo.saveDailyEntry(entry);
+
+      // Invalidate to refresh Dashboard, Missions & Charts
+      ref.invalidate(dailyEntriesProvider);
+      ref.invalidate(userProfileProvider);
+      ref.invalidate(activeMissionProvider);
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Cântărirea de ${roundedWeight.toStringAsFixed(1)} kg a fost salvată cu succes!'),
+          backgroundColor: AppColors.emerald,
+        ),
+      );
+
+      widget.onSaved?.call();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Eroare la salvare: $e'),
+          backgroundColor: AppColors.rose,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    // Listen to profile and entries to prefill when loaded
+    ref.listen(userProfileProvider, (_, __) => _prefillDataIfNeeded());
+    ref.listen(dailyEntriesProvider, (_, __) => _prefillDataIfNeeded());
+    _prefillDataIfNeeded();
+
     return Scaffold(
       body: SafeArea(
         child: SingleChildScrollView(
@@ -150,7 +239,7 @@ class _DailyLoggerScreenState extends ConsumerState<DailyLoggerScreen> {
                           loading: () => const Center(
                             child: Padding(
                               padding: EdgeInsets.all(8.0),
-                              child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation(AppColors.emerald)),
+                              child: CircularProgressIndicator(color: AppColors.emerald),
                             ),
                           ),
                           error: (_, __) => _buildDinnerChip('CUSTOM', 'Cină Custom / În afara meniului'),
@@ -202,7 +291,10 @@ class _DailyLoggerScreenState extends ConsumerState<DailyLoggerScreen> {
                               TextField(
                                 controller: _caloriesInController,
                                 keyboardType: TextInputType.number,
-                                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                                inputFormatters: [
+                                  FilteringTextInputFormatter.digitsOnly,
+                                  LengthLimitingTextInputFormatter(5),
+                                ],
                                 decoration: const InputDecoration(suffixText: 'kcal'),
                               ),
                             ],
@@ -218,7 +310,10 @@ class _DailyLoggerScreenState extends ConsumerState<DailyLoggerScreen> {
                               TextField(
                                 controller: _caloriesOutController,
                                 keyboardType: TextInputType.number,
-                                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                                inputFormatters: [
+                                  FilteringTextInputFormatter.digitsOnly,
+                                  LengthLimitingTextInputFormatter(5),
+                                ],
                                 decoration: const InputDecoration(suffixText: 'kcal'),
                               ),
                             ],
@@ -283,6 +378,7 @@ class _DailyLoggerScreenState extends ConsumerState<DailyLoggerScreen> {
                 label: 'Save Daily Entry',
                 icon: Icons.check_circle_outline,
                 width: double.infinity,
+                isLoading: _isSaving,
                 onPressed: _saveEntry,
               ),
               const SizedBox(height: 24),
