@@ -64,7 +64,7 @@ class _AiNutritionistScreenState extends ConsumerState<AiNutritionistScreen> {
 
     _messages.add({
       'role': 'ai',
-      'text': 'Salut ${widget.profile.firstName}! Sunt Panda Coach AI 🐼.\n\n📊 **Analiza Ta Metabolică:**\n• Greutate: ${widget.profile.profileStartWeight} kg · Înălțime: ${widget.profile.heightCm} cm · Vârstă: ${widget.profile.age} ani\n• **Calorii de Mentenanță (TDEE):** ~$maintenance kcal/zi\n• **Ținta Recomandată (${widget.activeMission.missionType.name.toUpperCase()}):** ~$target kcal/zi ${isCutting ? '(-450 kcal deficit)' : '(+300 kcal surplus)'}\n\nSpune-mi ce preferințe alimentare ai (ex. fără porc, mai mult pește, rețete rapide) și îți voi structura mesele ideale!',
+      'text': 'Hello ${widget.profile.firstName}! I am Panda Coach AI 🐼.\n\n📊 **Your Metabolic Analysis:**\n• Weight: ${widget.profile.profileStartWeight} kg · Height: ${widget.profile.heightCm} cm · Age: ${widget.profile.age} yrs\n• **Maintenance Calories (TDEE):** ~$maintenance kcal/day\n• **Recommended Daily Target (${widget.activeMission.missionType.name.toUpperCase()}):** ~$target kcal/day ${isCutting ? '(-450 kcal deficit)' : '(+300 kcal surplus)'}\n\nLet me know your dietary preferences (e.g. no pork, more fish, quick 15-min recipes) and I will craft your ideal glycemic meal plan!',
     });
   }
 
@@ -98,10 +98,11 @@ class _AiNutritionistScreenState extends ConsumerState<AiNutritionistScreen> {
 
     // 2. Generate structured meal proposals if requesting plan
     if (text.toLowerCase().contains('plan') ||
-        text.toLowerCase().contains('meniu') ||
-        text.toLowerCase().contains('masa') ||
-        text.toLowerCase().contains('rețet') ||
-        text.toLowerCase().contains('retet') ||
+        text.toLowerCase().contains('menu') ||
+        text.toLowerCase().contains('meal') ||
+        text.toLowerCase().contains('recipe') ||
+        text.toLowerCase().contains('cutting') ||
+        text.toLowerCase().contains('bulking') ||
         presetText != null) {
       final recipes = await _aiService.generateCustomMealPlan(
         profile: widget.profile,
@@ -148,7 +149,7 @@ class _AiNutritionistScreenState extends ConsumerState<AiNutritionistScreen> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('„${recipe.title}” a fost salvată în Meniul Tău!'),
+        content: Text('"${recipe.title}" saved to your personal menu!'),
         backgroundColor: AppColors.emerald,
       ),
     );
@@ -170,40 +171,27 @@ class _AiNutritionistScreenState extends ConsumerState<AiNutritionistScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: AppColors.surface,
-        elevation: 0,
-        title: Row(
+        title: const Row(
           children: [
-            Container(
-              width: 32,
-              height: 32,
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                image: DecorationImage(
-                  image: AssetImage('assets/images/panda_logo.png'),
-                  fit: BoxFit.cover,
-                ),
-              ),
-            ),
-            const SizedBox(width: 10),
-            const Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Panda AI Nutritionist', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
-                Text('Glycemic & Metabolic Coach', style: TextStyle(fontSize: 11, color: AppColors.emeraldLight)),
-              ],
+            Icon(Icons.smart_toy_outlined, color: AppColors.emeraldLight, size: 22),
+            SizedBox(width: 8),
+            Text(
+              'Panda Coach AI Nutritionist',
+              style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
             ),
           ],
         ),
+        backgroundColor: AppColors.surface,
+        elevation: 0,
       ),
       body: SafeArea(
         child: Column(
           children: [
-            // Messages List
+            // Chat Messages List
             Expanded(
               child: ListView.builder(
                 controller: _scrollController,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                 itemCount: _messages.length + (_generatedRecipes.isNotEmpty ? 1 : 0),
                 itemBuilder: (context, index) {
                   if (index == _messages.length && _generatedRecipes.isNotEmpty) {
@@ -246,7 +234,7 @@ class _AiNutritionistScreenState extends ConsumerState<AiNutritionistScreen> {
                   children: [
                     SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation(AppColors.emerald))),
                     SizedBox(width: 10),
-                    Text('Panda AI calculează formulele glicemice...', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
+                    Text('Panda AI is computing glycemic formulas...', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
                   ],
                 ),
               ),
@@ -257,11 +245,11 @@ class _AiNutritionistScreenState extends ConsumerState<AiNutritionistScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               child: Row(
                 children: [
-                  _buildQuickChip('📊 Analiză Mentenanță & TDEE'),
-                  _buildQuickChip('🔥 Generează Plan de Cutting'),
-                  _buildQuickChip('🐟 Meniu bogat în pește & somon'),
-                  _buildQuickChip('🚫 Fără lactate / Fără lactoză'),
-                  _buildQuickChip('⚡ Rețete rapide sub 15 minute'),
+                  _buildQuickChip('📊 Maintenance & TDEE Analysis'),
+                  _buildQuickChip('🔥 Generate Cutting Plan'),
+                  _buildQuickChip('🐟 High-Fish & Salmon Menu'),
+                  _buildQuickChip('🚫 Dairy-Free / No Lactose'),
+                  _buildQuickChip('⚡ Quick 15-Minute Meals'),
                 ],
               ),
             ),
@@ -280,7 +268,7 @@ class _AiNutritionistScreenState extends ConsumerState<AiNutritionistScreen> {
                       controller: _textController,
                       style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
                       decoration: const InputDecoration(
-                        hintText: 'Spune-i AI-ului ce preferințe ai...',
+                        hintText: 'Ask Panda AI about meal ideas or preferences...',
                         contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                         border: InputBorder.none,
                         enabledBorder: InputBorder.none,
@@ -326,7 +314,7 @@ class _AiNutritionistScreenState extends ConsumerState<AiNutritionistScreen> {
               Icon(Icons.restaurant_menu, color: AppColors.emeraldLight, size: 18),
               SizedBox(width: 8),
               Text(
-                'Rețete Propose de AI (Glicemic & Cântărit Brut)',
+                'AI Proposed Meals (Glycemic & Raw Weighed)',
                 style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
               ),
             ],
@@ -392,7 +380,7 @@ class _AiNutritionistScreenState extends ConsumerState<AiNutritionistScreen> {
             ),
             const SizedBox(height: 14),
             PandaButton(
-              label: '📥 Salvează în Meniul Meu',
+              label: '📥 Save to My Menu',
               icon: Icons.bookmark_add_outlined,
               variant: PandaButtonVariant.secondary,
               width: double.infinity,

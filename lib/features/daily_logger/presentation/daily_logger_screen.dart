@@ -99,7 +99,7 @@ class _DailyLoggerScreenState extends ConsumerState<DailyLoggerScreen> {
     if (rawWeight == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Te rugăm să introduci o greutate validă.'),
+          content: Text('Please enter a valid numeric weight.'),
           backgroundColor: AppColors.rose,
         ),
       );
@@ -145,7 +145,7 @@ class _DailyLoggerScreenState extends ConsumerState<DailyLoggerScreen> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Cântărirea de ${roundedWeight.toStringAsFixed(1)} kg și $calIn kcal au fost salvate!'),
+          content: Text('Morning log of ${roundedWeight.toStringAsFixed(1)} kg and $calIn kcal saved!'),
           backgroundColor: AppColors.emerald,
         ),
       );
@@ -155,7 +155,7 @@ class _DailyLoggerScreenState extends ConsumerState<DailyLoggerScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Eroare la salvare: $e'),
+          content: Text('Error saving log: $e'),
           backgroundColor: AppColors.rose,
         ),
       );
@@ -249,7 +249,7 @@ class _DailyLoggerScreenState extends ConsumerState<DailyLoggerScreen> {
               ),
               const SizedBox(height: 16),
 
-              // 2. Mese Consumate din Planul Personal (Interactive Checklists)
+              // 2. Daily Meals Consumed (Interactive Checklists)
               GlassCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -261,7 +261,7 @@ class _DailyLoggerScreenState extends ConsumerState<DailyLoggerScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Mese Consumate Azi',
+                              'Daily Meals Consumed',
                               style: TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.bold,
@@ -270,7 +270,7 @@ class _DailyLoggerScreenState extends ConsumerState<DailyLoggerScreen> {
                             ),
                             SizedBox(height: 4),
                             Text(
-                              'Bifează mesele mâncate pentru calcul automat de calorii',
+                              'Check off meals to automatically accumulate calories in',
                               style: TextStyle(color: AppColors.textMuted, fontSize: 12),
                             ),
                           ],
@@ -278,7 +278,7 @@ class _DailyLoggerScreenState extends ConsumerState<DailyLoggerScreen> {
                         if (profile != null && activeMission != null)
                           IconButton(
                             icon: const Icon(Icons.smart_toy_outlined, color: AppColors.emeraldLight),
-                            tooltip: 'Discută cu Panda Coach AI',
+                            tooltip: 'Consult Panda Coach AI',
                             onPressed: () {
                               Navigator.of(context).push(
                                 MaterialPageRoute<void>(
@@ -301,7 +301,7 @@ class _DailyLoggerScreenState extends ConsumerState<DailyLoggerScreen> {
                             ),
                           ),
                           error: (_, __) => const Text(
-                            'Nu am putut încărca meniul.',
+                            'Could not load meals menu.',
                             style: TextStyle(color: AppColors.rose, fontSize: 13),
                           ),
                           data: (recipes) {
@@ -316,14 +316,14 @@ class _DailyLoggerScreenState extends ConsumerState<DailyLoggerScreen> {
                                 child: Column(
                                   children: [
                                     const Text(
-                                      'Nu ai încă rețete salvate în meniul tău personal.',
+                                      'No meals saved in your personal menu yet.',
                                       style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
                                       textAlign: TextAlign.center,
                                     ),
                                     const SizedBox(height: 12),
                                     if (profile != null && activeMission != null)
                                       PandaButton(
-                                        label: '🤖 Cere Mese de la Panda AI',
+                                        label: '🤖 Generate Meals with Panda AI',
                                         icon: Icons.auto_awesome,
                                         variant: PandaButtonVariant.secondary,
                                         onPressed: () {
@@ -361,7 +361,47 @@ class _DailyLoggerScreenState extends ConsumerState<DailyLoggerScreen> {
               ),
               const SizedBox(height: 16),
 
-              // 3. Caloric Intake & Burn
+              // 3. Activity & Adherence Flags (Swapped above Energy Balance)
+              GlassCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Daily Activity & Adherence',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      thumbColor: WidgetStateProperty.resolveWith(
+                        (states) => states.contains(WidgetState.selected) ? AppColors.cyan : null,
+                      ),
+                      title: const Text('Swimming Session', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                      subtitle: const Text('Logged active pool workout', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
+                      value: _swimming,
+                      onChanged: (val) => setState(() => _swimming = val),
+                    ),
+                    const Divider(color: AppColors.surfaceElevated),
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      thumbColor: WidgetStateProperty.resolveWith(
+                        (states) => states.contains(WidgetState.selected) ? AppColors.emerald : null,
+                      ),
+                      title: const Text('Nutrition Plan Followed', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                      subtitle: const Text('Weighed foods and raw proteins as prescribed', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
+                      value: _planFollowed,
+                      onChanged: (val) => setState(() => _planFollowed = val),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // 4. Energy Balance (Calories)
               GlassCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -421,36 +461,6 @@ class _DailyLoggerScreenState extends ConsumerState<DailyLoggerScreen> {
                           ),
                         ),
                       ],
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // 4. Activity & Adherence Flags
-              GlassCard(
-                child: Column(
-                  children: [
-                    SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      thumbColor: WidgetStateProperty.resolveWith(
-                        (states) => states.contains(WidgetState.selected) ? AppColors.cyan : null,
-                      ),
-                      title: const Text('Swimming Session', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                      subtitle: const Text('Logged active pool workout', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
-                      value: _swimming,
-                      onChanged: (val) => setState(() => _swimming = val),
-                    ),
-                    const Divider(color: AppColors.surfaceElevated),
-                    SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      thumbColor: WidgetStateProperty.resolveWith(
-                        (states) => states.contains(WidgetState.selected) ? AppColors.emerald : null,
-                      ),
-                      title: const Text('Nutrition Plan Followed', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                      subtitle: const Text('Weighed foods and raw proteins as prescribed', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
-                      value: _planFollowed,
-                      onChanged: (val) => setState(() => _planFollowed = val),
                     ),
                   ],
                 ),
@@ -547,7 +557,7 @@ class _DailyLoggerScreenState extends ConsumerState<DailyLoggerScreen> {
         subtitle: Padding(
           padding: const EdgeInsets.only(top: 4.0),
           child: Text(
-            '${recipe.calories} kcal · ${recipe.proteinG ?? 0}g P · ${recipe.carbsG ?? 0}g C',
+            '+${recipe.calories} kcal · ${recipe.proteinG ?? 0}g P · ${recipe.carbsG ?? 0}g C',
             style: const TextStyle(color: AppColors.cyanLight, fontSize: 11, fontWeight: FontWeight.w600),
           ),
         ),

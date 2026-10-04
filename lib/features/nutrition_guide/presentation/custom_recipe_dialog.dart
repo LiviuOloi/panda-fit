@@ -46,9 +46,9 @@ class _CustomRecipeDialogState extends ConsumerState<CustomRecipeDialog> {
     if (r != null) {
       _ingredients.addAll(r.ingredients);
     } else {
-      _ingredients.add(const RecipeIngredient(name: 'Piept de pui', amount: '220g', state: 'raw'));
-      _ingredients.add(const RecipeIngredient(name: 'Orez Panzani / Basmati', amount: '100g', state: 'dry/uncooked'));
-      _ingredients.add(const RecipeIngredient(name: 'Legume asortate', amount: '250g', state: 'frozen/raw'));
+      _ingredients.add(const RecipeIngredient(name: 'Chicken Breast', amount: '220g', state: 'raw'));
+      _ingredients.add(const RecipeIngredient(name: 'Basmati / Panzani Rice', amount: '100g', state: 'dry/uncooked'));
+      _ingredients.add(const RecipeIngredient(name: 'Mixed Low-GI Veggies', amount: '250g', state: 'frozen/raw'));
     }
   }
 
@@ -84,7 +84,7 @@ class _CustomRecipeDialogState extends ConsumerState<CustomRecipeDialog> {
     if (!_formKey.currentState!.validate()) return;
     if (_ingredients.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Adaugă cel puțin un ingredient.'), backgroundColor: AppColors.rose),
+        const SnackBar(content: Text('Please add at least one ingredient.'), backgroundColor: AppColors.rose),
       );
       return;
     }
@@ -119,7 +119,7 @@ class _CustomRecipeDialogState extends ConsumerState<CustomRecipeDialog> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Rețeta „${recipe.title}” a fost salvată!'),
+        content: Text('Recipe "${recipe.title}" saved successfully!'),
         backgroundColor: AppColors.emerald,
       ),
     );
@@ -148,7 +148,7 @@ class _CustomRecipeDialogState extends ConsumerState<CustomRecipeDialog> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        widget.existingRecipe == null ? 'Adaugă Masă Personalizată' : 'Editează Masa',
+                        widget.existingRecipe == null ? 'Add Custom Meal' : 'Edit Meal Recipe',
                         style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
                       ),
                       IconButton(
@@ -162,27 +162,27 @@ class _CustomRecipeDialogState extends ConsumerState<CustomRecipeDialog> {
                   // Title & Category
                   TextFormField(
                     controller: _titleController,
-                    decoration: const InputDecoration(labelText: 'Nume Rețetă / Masă (ex: Cină cu Somon)'),
-                    validator: (v) => v == null || v.trim().isEmpty ? 'Introdu numele rețetei' : null,
+                    decoration: const InputDecoration(labelText: 'Recipe Title (e.g. Salmon & Low-GI Veggies)'),
+                    validator: (v) => v == null || v.trim().isEmpty ? 'Please enter recipe title' : null,
                   ),
                   const SizedBox(height: 12),
 
                   DropdownButtonFormField<String>(
                     initialValue: _category,
                     dropdownColor: AppColors.surfaceElevated,
-                    decoration: const InputDecoration(labelText: 'Categorie'),
+                    decoration: const InputDecoration(labelText: 'Meal Category'),
                     items: const [
-                      DropdownMenuItem(value: 'BREAKFAST', child: Text('Mic Dejun')),
-                      DropdownMenuItem(value: 'SNACK', child: Text('Gustare / Prânz')),
-                      DropdownMenuItem(value: 'DINNER', child: Text('Cină')),
-                      DropdownMenuItem(value: 'CUSTOM', child: Text('Opțiune Personalizată')),
+                      DropdownMenuItem(value: 'BREAKFAST', child: Text('Breakfast')),
+                      DropdownMenuItem(value: 'SNACK', child: Text('Snack / Lunch')),
+                      DropdownMenuItem(value: 'DINNER', child: Text('Dinner')),
+                      DropdownMenuItem(value: 'CUSTOM', child: Text('Custom Option')),
                     ],
                     onChanged: (v) => setState(() => _category = v ?? 'DINNER'),
                   ),
                   const SizedBox(height: 16),
 
                   // Macros
-                  const Text('Nutriție & Calorii', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.textSecondary)),
+                  const Text('Nutrition & Energy', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.textSecondary)),
                   const SizedBox(height: 8),
                   Row(
                     children: [
@@ -190,7 +190,7 @@ class _CustomRecipeDialogState extends ConsumerState<CustomRecipeDialog> {
                         child: TextFormField(
                           controller: _caloriesController,
                           keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(labelText: 'Calorii (kcal)'),
+                          decoration: const InputDecoration(labelText: 'Calories (kcal)'),
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -198,7 +198,7 @@ class _CustomRecipeDialogState extends ConsumerState<CustomRecipeDialog> {
                         child: TextFormField(
                           controller: _proteinController,
                           keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(labelText: 'Proteine (g)'),
+                          decoration: const InputDecoration(labelText: 'Protein (g)'),
                         ),
                       ),
                     ],
@@ -210,7 +210,7 @@ class _CustomRecipeDialogState extends ConsumerState<CustomRecipeDialog> {
                         child: TextFormField(
                           controller: _carbsController,
                           keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(labelText: 'Carbo (g)'),
+                          decoration: const InputDecoration(labelText: 'Carbs (g)'),
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -218,7 +218,7 @@ class _CustomRecipeDialogState extends ConsumerState<CustomRecipeDialog> {
                         child: TextFormField(
                           controller: _fatController,
                           keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(labelText: 'Grăsimi (g)'),
+                          decoration: const InputDecoration(labelText: 'Fat (g)'),
                         ),
                       ),
                     ],
@@ -226,7 +226,7 @@ class _CustomRecipeDialogState extends ConsumerState<CustomRecipeDialog> {
                   const SizedBox(height: 16),
 
                   // Ingredients List
-                  const Text('Ingrediente & Protocol Cântărire', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.textSecondary)),
+                  const Text('Ingredients & Weighing State', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.textSecondary)),
                   const SizedBox(height: 8),
                   ..._ingredients.asMap().entries.map((entry) {
                     final idx = entry.key;
@@ -264,7 +264,7 @@ class _CustomRecipeDialogState extends ConsumerState<CustomRecipeDialog> {
                         flex: 2,
                         child: TextField(
                           controller: _ingredientNameController,
-                          decoration: const InputDecoration(hintText: 'ex: Mușchi vită', isDense: true),
+                          decoration: const InputDecoration(hintText: 'e.g. Lean Beef', isDense: true),
                         ),
                       ),
                       const SizedBox(width: 6),
@@ -280,10 +280,10 @@ class _CustomRecipeDialogState extends ConsumerState<CustomRecipeDialog> {
                         dropdownColor: AppColors.surfaceElevated,
                         underline: const SizedBox.shrink(),
                         items: const [
-                          DropdownMenuItem(value: 'raw', child: Text('crud')),
-                          DropdownMenuItem(value: 'dry/uncooked', child: Text('uscat')),
-                          DropdownMenuItem(value: 'frozen/raw', child: Text('congelat')),
-                          DropdownMenuItem(value: 'measured', child: Text('măsurat')),
+                          DropdownMenuItem(value: 'raw', child: Text('raw')),
+                          DropdownMenuItem(value: 'dry/uncooked', child: Text('dry')),
+                          DropdownMenuItem(value: 'frozen/raw', child: Text('frozen')),
+                          DropdownMenuItem(value: 'measured', child: Text('measured')),
                         ],
                         onChanged: (v) => setState(() => _ingredientState = v ?? 'raw'),
                       ),
@@ -298,7 +298,7 @@ class _CustomRecipeDialogState extends ConsumerState<CustomRecipeDialog> {
 
                   // Save Button
                   PandaButton(
-                    label: widget.existingRecipe == null ? 'Salvează Masa' : 'Actualizează',
+                    label: widget.existingRecipe == null ? 'Save Recipe' : 'Update Recipe',
                     icon: Icons.check,
                     onPressed: _saveRecipe,
                   ),

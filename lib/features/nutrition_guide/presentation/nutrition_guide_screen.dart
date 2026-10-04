@@ -38,7 +38,6 @@ class NutritionGuideScreen extends ConsumerWidget {
     final profileAsync = ref.watch(userProfileProvider);
     final recipesAsync = ref.watch(allRecipesProvider);
 
-    // Fallback profile / mission for demonstration if not loaded
     final profile = profileAsync.valueOrNull ??
         UserProfile(
           id: user?.id ?? 'demo',
@@ -123,7 +122,7 @@ class NutritionGuideScreen extends ConsumerWidget {
                                 ),
                               ),
                               Text(
-                                'Planuri alimentare adaptate pe greutatea și preferințele tale',
+                                'Tailored meal plans adapted to your biometrics & preferences',
                                 style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
                               ),
                             ],
@@ -133,7 +132,7 @@ class NutritionGuideScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 16),
                     PandaButton(
-                      label: '✨ Deschide Panda AI Nutritionist',
+                      label: '✨ Open Panda AI Nutritionist',
                       icon: Icons.chat_bubble_outline,
                       width: double.infinity,
                       onPressed: () => _openAiNutritionist(context, profile, activeMission),
@@ -178,7 +177,7 @@ class NutritionGuideScreen extends ConsumerWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   const Text(
-                    'Meniurile Tale Personale',
+                    'Your Personal Menus',
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
@@ -188,7 +187,7 @@ class NutritionGuideScreen extends ConsumerWidget {
                   TextButton.icon(
                     onPressed: () => _openCustomRecipeDialog(context),
                     icon: const Icon(Icons.add, size: 18, color: AppColors.emerald),
-                    label: const Text('+ Masă Nouă', style: TextStyle(color: AppColors.emerald, fontWeight: FontWeight.bold)),
+                    label: const Text('+ New Meal', style: TextStyle(color: AppColors.emerald, fontWeight: FontWeight.bold)),
                   ),
                 ],
               ),
@@ -202,7 +201,7 @@ class NutritionGuideScreen extends ConsumerWidget {
                   ),
                 ),
                 error: (err, _) => Center(
-                  child: Text('Eroare la încărcarea rețetelor: $err', style: const TextStyle(color: AppColors.rose)),
+                  child: Text('Error loading recipes: $err', style: const TextStyle(color: AppColors.rose)),
                 ),
                 data: (recipes) {
                   if (recipes.isEmpty) {
@@ -213,17 +212,17 @@ class NutritionGuideScreen extends ConsumerWidget {
                             const Icon(Icons.restaurant, color: AppColors.textMuted, size: 36),
                             const SizedBox(height: 8),
                             const Text(
-                              'Nu ai rețete salvate încă.',
+                              'No recipes saved yet.',
                               style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.bold),
                             ),
                             const SizedBox(height: 4),
                             const Text(
-                              'Creează una manual sau cere o sugestie AI!',
+                              'Create a meal manually or ask Panda AI to propose recipes!',
                               style: TextStyle(color: AppColors.textMuted, fontSize: 12),
                             ),
                             const SizedBox(height: 12),
                             PandaButton(
-                              label: 'Creează Prima Masă',
+                              label: 'Create First Meal',
                               icon: Icons.add,
                               variant: PandaButtonVariant.outline,
                               onPressed: () => _openCustomRecipeDialog(context),
