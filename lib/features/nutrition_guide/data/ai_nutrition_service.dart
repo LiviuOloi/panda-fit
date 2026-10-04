@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import '../../../core/utils/calculation_engine.dart';
@@ -85,23 +84,64 @@ User Biometrics:
 - Specific Dietary Request / Preferences: "$userPreferences"
 ${imageBytes != null ? "NOTE: An image of a food product or nutrition label is attached. Inspect its ingredients, macros per 100g, and construct customized recipes featuring or incorporating this product with precise weighed portions!" : ""}
 
-Please generate 3 creative, delicious, low-glycemic meal recipes (e.g. 1 Breakfast, 1 Lunch/Snack, 1 Dinner) adapted to these goals and preferences.
+Please generate a full daily meal plan consisting of 4 distinct meals:
+1. "BREAKFAST" (Micul Dejun)
+2. "SNACK" (Gustare)
+3. "LUNCH" (Prânzul)
+4. "DINNER" (Cina)
+Total combined calories should closely match ~$recommendedTarget kcal/day.
 Weighing rules: Meat=raw, Rice/Carbs=dry/uncooked, Veggies=frozen/raw, Oil=measured.
 Return ONLY a valid JSON array matching this exact schema without markdown wrap:
 [
   {
-    "category": "DINNER",
-    "title": "Recipe Title",
+    "category": "BREAKFAST",
+    "title": "Breakfast Title",
+    "calories": 520,
+    "protein_g": 42.0,
+    "carbs_g": 40.0,
+    "fat_g": 18.0,
+    "instructions": "Preparation details.",
+    "ingredients": [
+      {"name": "Whole Eggs", "amount": "3 pcs", "state": "raw"},
+      {"name": "Cottage Cheese 3%", "amount": "100g", "state": "ready"}
+    ]
+  },
+  {
+    "category": "SNACK",
+    "title": "Snack Title",
+    "calories": 280,
+    "protein_g": 22.0,
+    "carbs_g": 28.0,
+    "fat_g": 8.0,
+    "instructions": "Preparation details.",
+    "ingredients": [
+      {"name": "Greek Yogurt 2%", "amount": "150g", "state": "ready"}
+    ]
+  },
+  {
+    "category": "LUNCH",
+    "title": "Lunch Title",
     "calories": 650,
     "protein_g": 55.0,
-    "carbs_g": 60.0,
-    "fat_g": 14.0,
-    "instructions": "Preparation and cooking details.",
+    "carbs_g": 65.0,
+    "fat_g": 12.0,
+    "instructions": "Preparation details.",
     "ingredients": [
       {"name": "Chicken Breast", "amount": "220g", "state": "raw"},
-      {"name": "Panzani Rice", "amount": "100g", "state": "dry/uncooked"},
-      {"name": "Broccoli & Beans", "amount": "250g", "state": "frozen/raw"},
-      {"name": "Olive Oil", "amount": "5g", "state": "measured"}
+      {"name": "Basmati Rice", "amount": "100g", "state": "dry/uncooked"}
+    ]
+  },
+  {
+    "category": "DINNER",
+    "title": "Dinner Title",
+    "calories": 600,
+    "protein_g": 50.0,
+    "carbs_g": 45.0,
+    "fat_g": 16.0,
+    "instructions": "Preparation details.",
+    "ingredients": [
+      {"name": "Wild Salmon", "amount": "200g", "state": "raw"},
+      {"name": "Sweet Potatoes", "amount": "200g", "state": "raw"}
     ]
   }
 ]
@@ -299,117 +339,77 @@ HOW TO CONVERSE & ASSIST:
     final isNoDairy = lowerPref.contains('lactate') || lowerPref.contains('dairy') || lowerPref.contains('lactoza');
     final isBeefLover = lowerPref.contains('vita') || lowerPref.contains('beef');
 
-    final rand = Random();
-    final option = rand.nextInt(3);
-
-    if (isFishLover || option == 0) {
-      return [
-        MealRecipe(
-          id: '',
-          category: 'BREAKFAST',
-          title: 'Salmon Avocado Protein Toast & Eggs',
-          calories: isCutting ? 520 : 640,
-          proteinG: 42.0,
-          carbsG: 40.0,
-          fatG: 20.0,
-          instructions: 'Toast whole wheat bread. Layer smoked or pan-seared salmon with sliced avocado and soft poached eggs.',
-          ingredients: [
-            const RecipeIngredient(name: 'Whole Eggs', amount: '2 pcs', state: 'raw'),
-            const RecipeIngredient(name: 'Wild Salmon / Smoked Trout', amount: '100g', state: 'raw'),
-            const RecipeIngredient(name: 'Avocado', amount: '40g', state: 'ready'),
-            const RecipeIngredient(name: 'Graham Bread', amount: '60g', state: 'ready'),
-          ],
-        ),
-        MealRecipe(
-          id: '',
-          category: 'DINNER',
-          title: 'Oven-Baked Wild Salmon & Basmati Matrix',
-          calories: isCutting ? 650 : 800,
-          proteinG: 52.0,
-          carbsG: isCutting ? 65.0 : 90.0,
-          fatG: 18.0,
-          instructions: 'Bake seasoned raw salmon fillet at 190°C. Serve over steamed dry-measured basmati rice and roasted broccoli/asparagus.',
-          ingredients: [
-            RecipeIngredient(name: 'Wild Salmon Fillet', amount: isCutting ? '220g' : '260g', state: 'raw'),
-            RecipeIngredient(name: 'Basmati Rice', amount: isCutting ? '100g' : '135g', state: 'dry/uncooked'),
-            const RecipeIngredient(name: 'Broccoli & Green Asparagus', amount: '250g', state: 'frozen/raw'),
-            const RecipeIngredient(name: 'Pickles in Brine', amount: '60g', state: 'ready'),
-            const RecipeIngredient(name: 'Olive Oil', amount: '5g', state: 'measured'),
-          ],
-        ),
-      ];
-    }
-
-    if (isBeefLover || (!isNoPork && option == 1)) {
-      return [
-        MealRecipe(
-          id: '',
-          category: 'BREAKFAST',
-          title: 'Omelet with Light Cottage & Mushrooms',
-          calories: isCutting ? 490 : 590,
-          proteinG: 46.0,
-          carbsG: 35.0,
-          fatG: 16.0,
-          instructions: 'Whisk 3 eggs, sauté mushrooms with cooking spray/oil, fold in light cottage cheese.',
-          ingredients: [
-            const RecipeIngredient(name: 'Eggs', amount: '3 pcs', state: 'raw'),
-            RecipeIngredient(name: isNoDairy ? 'Avocado' : 'Cottage Cheese 3%', amount: isNoDairy ? '40g' : '100g', state: 'ready'),
-            const RecipeIngredient(name: 'Sautéed Mushrooms', amount: '150g', state: 'frozen/raw'),
-            const RecipeIngredient(name: 'Graham Bread', amount: '60g', state: 'ready'),
-          ],
-        ),
-        MealRecipe(
-          id: '',
-          category: 'DINNER',
-          title: 'Tender Lean Beef & Sweet Potato Wedges',
-          calories: isCutting ? 660 : 790,
-          proteinG: 56.0,
-          carbsG: isCutting ? 65.0 : 90.0,
-          fatG: 16.0,
-          instructions: 'Grill lean beef cut. Air fry raw weighed sweet potato wedges with sea salt and smoked paprika.',
-          ingredients: [
-            RecipeIngredient(name: 'Lean Beef Sirloin / Tenderloin', amount: isCutting ? '220g' : '260g', state: 'raw'),
-            RecipeIngredient(name: 'Sweet Potatoes', amount: isCutting ? '250g' : '350g', state: 'raw'),
-            const RecipeIngredient(name: 'Green Beans & Garlic', amount: '200g', state: 'frozen/raw'),
-            const RecipeIngredient(name: 'Olive Oil', amount: '5g', state: 'measured'),
-          ],
-        ),
-      ];
-    }
-
     return [
       MealRecipe(
         id: '',
         category: 'BREAKFAST',
-        title: 'Panda High-Protein Power Omelet',
-        calories: isCutting ? 540 : 640,
-        proteinG: 45.0,
-        carbsG: 42.0,
+        title: 'Omletă Anabolică cu Legume Verzi & Toast',
+        calories: isCutting ? 520 : 620,
+        proteinG: 42.0,
+        carbsG: 40.0,
         fatG: 18.0,
-        instructions: 'Whisk 3 eggs with spinach and green beans. Serve with whole grain toast and light cheese.',
+        instructions: 'Bate 3 ouă cu sare și piper. Trage la tigaie broccoli și fasolea verde în 5g ulei de măsline măsurat. Toarnă ouăle și servește cu brânză cottage și pâine graham.',
         ingredients: [
-          const RecipeIngredient(name: 'Whole Eggs', amount: '3 pcs', state: 'raw'),
-          const RecipeIngredient(name: 'Green Veggies', amount: '200g', state: 'frozen/raw'),
-          const RecipeIngredient(name: 'Graham Bread', amount: '70g', state: 'ready'),
-          const RecipeIngredient(name: 'Cottage Cheese Light (3%)', amount: '100g', state: 'ready'),
-          const RecipeIngredient(name: 'Olive Oil', amount: '5g', state: 'measured'),
+          const RecipeIngredient(name: 'Ouă Întregi', amount: '3 buc', state: 'raw'),
+          RecipeIngredient(name: isNoDairy ? 'Avocado' : 'Brânză Cottage Light 3%', amount: isNoDairy ? '40g' : '100g', state: 'ready'),
+          const RecipeIngredient(name: 'Broccoli & Fasole Verde', amount: '200g', state: 'frozen/raw'),
+          const RecipeIngredient(name: 'Pâine Graham', amount: '70g', state: 'ready'),
+          const RecipeIngredient(name: 'Ulei de Măsline', amount: '5g', state: 'measured'),
+        ],
+      ),
+      MealRecipe(
+        id: '',
+        category: 'SNACK',
+        title: 'Iaurt Grecesc cu Afine & Semințe Chia',
+        calories: isCutting ? 280 : 340,
+        proteinG: 22.0,
+        carbsG: 28.0,
+        fatG: 8.0,
+        instructions: 'Amestecă iaurtul grecesc cu semințele de chia și afinele proaspete sau decongelate.',
+        ingredients: [
+          RecipeIngredient(name: isNoDairy ? 'Iaurt de Cocos/Soia' : 'Iaurt Grecesc 2%', amount: '150g', state: 'ready'),
+          const RecipeIngredient(name: 'Afine', amount: '75g', state: 'raw'),
+          const RecipeIngredient(name: 'Semințe de Chia', amount: '10g', state: 'raw'),
+          const RecipeIngredient(name: 'Unt de Arahide 100%', amount: '10g', state: 'measured'),
+        ],
+      ),
+      MealRecipe(
+        id: '',
+        category: 'LUNCH',
+        title: isFishLover
+            ? 'Păstrăv la Cuptor cu Orez Basmati & Murături'
+            : 'Piept de Pui la Grătar cu Orez Basmati & Legume',
+        calories: isCutting ? 650 : 780,
+        proteinG: 55.0,
+        carbsG: isCutting ? 65.0 : 90.0,
+        fatG: 12.0,
+        instructions: 'Fierbe orezul Basmati (cântărit uscat). Gătește pieptul de pui sau peștele (cântărit crud) pe grătar/tigaie antiaderentă. Servește cu legume și murături în saramură.',
+        ingredients: [
+          RecipeIngredient(name: isFishLover ? 'File de Păstrăv / Somon' : 'Piept de Pui', amount: isCutting ? '220g' : '260g', state: 'raw'),
+          RecipeIngredient(name: 'Orez Basmati / Panzani', amount: isCutting ? '100g' : '135g', state: 'dry/uncooked'),
+          const RecipeIngredient(name: 'Legume Asortate', amount: '250g', state: 'frozen/raw'),
+          const RecipeIngredient(name: 'Murături în Saramură', amount: '80g', state: 'ready'),
+          const RecipeIngredient(name: 'Ulei de Măsline', amount: '5g', state: 'measured'),
         ],
       ),
       MealRecipe(
         id: '',
         category: 'DINNER',
-        title: 'Golden Chicken Breast & Panzani Rice Matrix',
-        calories: isCutting ? 630 : 760,
-        proteinG: 58.0,
-        carbsG: isCutting ? 70.0 : 95.0,
-        fatG: 10.0,
-        instructions: 'Cook seasoned chicken in non-stick pan with measured oil. Boil dry rice. Serve with crunchy pickles in brine.',
+        title: isBeefLover
+            ? 'Mușchiuleț de Vită cu Cartofi Wedges & Sparanghel'
+            : (!isNoPork
+                ? 'Somon Sălbatic la Cuptor cu Cartofi Copți & Salată'
+                : 'Somon Sălbatic cu Cartofi Dulci & Legume Verzi'),
+        calories: isCutting ? 600 : 740,
+        proteinG: 50.0,
+        carbsG: isCutting ? 45.0 : 65.0,
+        fatG: 16.0,
+        instructions: 'Coace somonul sau carnea la cuptor la 190°C. Pregătește cartofii la air-fryer cu mirodenii. Servește cu o salată verde mare.',
         ingredients: [
-          RecipeIngredient(name: 'Chicken Breast', amount: isCutting ? '220g' : '260g', state: 'raw'),
-          RecipeIngredient(name: 'Panzani Rice', amount: isCutting ? '100g' : '135g', state: 'dry/uncooked'),
-          const RecipeIngredient(name: 'Low-GI Veggies', amount: '250g', state: 'frozen/raw'),
-          const RecipeIngredient(name: 'Pickles in Brine', amount: '80g', state: 'ready'),
-          const RecipeIngredient(name: 'Olive Oil', amount: '5g', state: 'measured'),
+          RecipeIngredient(name: isBeefLover ? 'Mușchi de Vită Fraged' : 'Somon Sălbatic', amount: isCutting ? '200g' : '240g', state: 'raw'),
+          RecipeIngredient(name: 'Cartofi / Cartofi Dulci', amount: isCutting ? '200g' : '300g', state: 'raw'),
+          const RecipeIngredient(name: 'Sparanghel / Salată Verde', amount: '200g', state: 'frozen/raw'),
+          const RecipeIngredient(name: 'Ulei de Măsline', amount: '5g', state: 'measured'),
         ],
       ),
     ];

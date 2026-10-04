@@ -296,17 +296,52 @@ class NutritionGuideScreen extends ConsumerWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   const Text(
-                    'Your Personal Menus',
+                    'Planul Tău Alimentar / Mese',
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                       color: AppColors.textPrimary,
                     ),
                   ),
-                  TextButton.icon(
-                    onPressed: () => _openCustomRecipeDialog(context),
-                    icon: const Icon(Icons.add, size: 18, color: AppColors.emerald),
-                    label: const Text('New Meal', style: TextStyle(color: AppColors.emerald, fontWeight: FontWeight.bold)),
+                  Row(
+                    children: [
+                      TextButton.icon(
+                        onPressed: () => _openCustomRecipeDialog(context),
+                        icon: const Icon(Icons.add, size: 18, color: AppColors.emerald),
+                        label: const Text('Adaugă Masă', style: TextStyle(color: AppColors.emerald, fontWeight: FontWeight.bold)),
+                      ),
+                      if (recipesAsync.valueOrNull != null && recipesAsync.valueOrNull!.isNotEmpty)
+                        IconButton(
+                          icon: const Icon(Icons.delete_sweep_outlined, size: 20, color: AppColors.rose),
+                          tooltip: 'Șterge toate mesele din plan',
+                          onPressed: () async {
+                            final confirm = await showDialog<bool>(
+                              context: context,
+                              builder: (ctx) => AlertDialog(
+                                backgroundColor: AppColors.surface,
+                                title: const Text('Ștergi toate mesele?', style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold)),
+                                content: const Text('Toate mesele salvate vor fi șterse din meniul tău personal. Vei putea genera oricând un plan nou cu Panda AI.'),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(ctx, false),
+                                    child: const Text('Anulează', style: TextStyle(color: AppColors.textSecondary)),
+                                  ),
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(ctx, true),
+                                    child: const Text('Șterge Tot', style: TextStyle(color: AppColors.rose, fontWeight: FontWeight.bold)),
+                                  ),
+                                ],
+                              ),
+                            );
+
+                            if (confirm == true) {
+                              final repo = ref.read(recipesRepositoryProvider);
+                              await repo.clearAllCustomRecipes(user?.id ?? profile.id);
+                              ref.invalidate(allRecipesProvider);
+                            }
+                          },
+                        ),
+                    ],
                   ),
                 ],
               ),
@@ -325,25 +360,43 @@ class NutritionGuideScreen extends ConsumerWidget {
                 data: (recipes) {
                   if (recipes.isEmpty) {
                     return GlassCard(
-                      child: Center(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
                         child: Column(
                           children: [
-                            const Icon(Icons.restaurant, color: AppColors.textMuted, size: 36),
-                            const SizedBox(height: 8),
-                            const Text(
-                              'No recipes saved yet.',
-                              style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.bold),
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: AppColors.emerald.withValues(alpha: 0.15),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.restaurant_menu, color: AppColors.emeraldLight, size: 36),
                             ),
-                            const SizedBox(height: 4),
+                            const SizedBox(height: 14),
                             const Text(
-                              'Create a meal manually or ask Panda AI to propose recipes!',
-                              style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+                              'Nu ai niciun meniu salvat încă',
+                              style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold, fontSize: 16),
+                              textAlign: TextAlign.center,
                             ),
-                            const SizedBox(height: 12),
+                            const SizedBox(height: 6),
+                            const Text(
+                              'Creează-ți un plan alimentar personalizat de la 0 cu antrenorul Panda AI sau configurează-ți mesele manual!',
+                              style: TextStyle(color: AppColors.textSecondary, fontSize: 13, height: 1.4),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 18),
                             PandaButton(
-                              label: 'Create First Meal',
+                              label: 'Generează Plan cu Panda AI',
+                              icon: Icons.auto_awesome,
+                              width: double.infinity,
+                              onPressed: () => _openAiNutritionist(context, profile, activeMission),
+                            ),
+                            const SizedBox(height: 10),
+                            PandaButton(
+                              label: 'Adaugă Masă Manual',
                               icon: Icons.add,
                               variant: PandaButtonVariant.outline,
+                              width: double.infinity,
                               onPressed: () => _openCustomRecipeDialog(context),
                             ),
                           ],
@@ -352,8 +405,38 @@ class NutritionGuideScreen extends ConsumerWidget {
                     );
                   }
 
+                  final totalCal = recipes.fold<int>(0, (sum, r) => sum + r.calories);
+                  final totalP = recipes.fold<double>(0.0, (sum, r) => sum + (r.proteinG ?? 0));
+                  final totalC = recipes.fold<double>(0.0, (sum, r) => sum + (r.carbsG ?? 0));
+                  final totalF = recipes.fold<double>(0.0, (sum, r) => sum + (r.fatG ?? 0));
+
                   return Column(
-                    children: recipes.map((r) => _buildRecipeCard(context, ref, r)).toList(),
+                    children: [
+                      // Total Nutrition Header Summary
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 14),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: AppColors.emerald.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppColors.emerald.withValues(alpha: 0.3)),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              'Total Plan Zilnic:',
+                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.textPrimary),
+                            ),
+                            Text(
+                              '$totalCal kcal · ${totalP.toStringAsFixed(0)}g P · ${totalC.toStringAsFixed(0)}g C · ${totalF.toStringAsFixed(0)}g F',
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: AppColors.emeraldLight),
+                            ),
+                          ],
+                        ),
+                      ),
+                      ...recipes.map((r) => _buildRecipeCard(context, ref, r)),
+                    ],
                   );
                 },
               ),

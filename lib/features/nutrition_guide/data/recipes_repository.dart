@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
@@ -18,19 +17,7 @@ class RecipesRepository {
   Future<List<MealRecipe>> fetchAllRecipes(String? userId) async {
     final Map<String, MealRecipe> recipesMap = {};
 
-    // 1. Load system default seed recipes from asset
-    try {
-      final jsonString = await rootBundle.loadString('assets/recipes/seed_recipes.json');
-      final list = json.decode(jsonString) as List<dynamic>;
-      for (final r in list) {
-        final recipe = MealRecipe.fromJson(r as Map<String, dynamic>);
-        recipesMap[recipe.id.isNotEmpty ? recipe.id : recipe.title] = recipe;
-      }
-    } catch (e) {
-      debugPrint('Failed to load asset recipes: $e');
-    }
-
-    // 2. Load custom recipes from local storage
+    // 1. Load custom recipes from local storage (starts clean/empty for new users)
     try {
       final prefs = await SharedPreferences.getInstance();
       final localJson = prefs.getString(_localCustomRecipesKey);
@@ -45,15 +32,14 @@ class RecipesRepository {
       debugPrint('Failed to load local custom recipes: $e');
     }
 
-    // 3. If connected to Supabase, query cloud recipes and merge
-    if (_client != null) {
+    // 2. If connected to Supabase, query user's personal cloud recipes and merge
+    if (_client != null && userId != null && userId.isNotEmpty) {
       try {
-        var query = _client.from('meal_recipes').select();
-        if (userId != null && userId.isNotEmpty) {
-          query = query.or('user_id.is.null,user_id.eq.$userId');
-        }
-
-        final res = await query.order('category', ascending: true);
+        final res = await _client
+            .from('meal_recipes')
+            .select()
+            .eq('user_id', userId)
+            .order('category', ascending: true);
         if (res.isNotEmpty) {
           for (final r in res) {
             final recipe = MealRecipe.fromJson(r);
@@ -65,7 +51,16 @@ class RecipesRepository {
       }
     }
 
-    return recipesMap.values.toList();
+    // Sort logically: BREAKFAST -> LUNCH -> DINNER -> SNACK -> CUSTOM
+    final sorted = recipesMap.values.toList();
+    const order = {'BREAKFAST': 1, 'LUNCH': 2, 'DINNER': 3, 'SNACK': 4, 'CUSTOM': 5};
+    sorted.sort((a, b) {
+      final orderA = order[a.category.toUpperCase()] ?? 99;
+      final orderB = order[b.category.toUpperCase()] ?? 99;
+      return orderA.compareTo(orderB);
+    });
+
+    return sorted;
   }
 
   Future<MealRecipe> createCustomRecipe(MealRecipe recipe) async {
@@ -88,7 +83,7 @@ class RecipesRepository {
     await _saveToLocalCache(newRecipe);
 
     // 2. Try saving to Supabase
-    if (_client != null) {
+    if (_client != null && newRecipe.userId != null) {
       try {
         final payload = newRecipe.toJson();
         await _client.from('meal_recipes').insert(payload);
@@ -98,6 +93,30 @@ class RecipesRepository {
     }
 
     return newRecipe;
+  }
+
+  Future<void> saveBatchMealPlan(List<MealRecipe> recipes, String? userId) async {
+    for (final recipe in recipes) {
+      final toSave = MealRecipe(
+        id: recipe.id.isNotEmpty ? recipe.id : _uuid.v4(),
+        userId: userId,
+        category: recipe.category,
+        code: recipe.code,
+        title: recipe.title,
+        ingredients: recipe.ingredients,
+        calories: recipe.calories,
+        proteinG: recipe.proteinG,
+        carbsG: recipe.carbsG,
+        fatG: recipe.fatG,
+        instructions: recipe.instructions,
+      );
+      await _saveToLocalCache(toSave);
+      if (_client != null && userId != null) {
+        try {
+          await _client.from('meal_recipes').insert(toSave.toJson());
+        } catch (_) {}
+      }
+    }
   }
 
   Future<void> updateCustomRecipe(MealRecipe recipe) async {
@@ -141,6 +160,23 @@ class RecipesRepository {
         await _client.from('meal_recipes').delete().eq('id', recipeId);
       } catch (e) {
         debugPrint('Supabase delete recipe note: $e');
+      }
+    }
+  }
+
+  Future<void> clearAllCustomRecipes(String? userId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_localCustomRecipesKey);
+    } catch (e) {
+      debugPrint('Failed to clear local custom recipes: $e');
+    }
+
+    if (_client != null && userId != null && userId.isNotEmpty) {
+      try {
+        await _client.from('meal_recipes').delete().eq('user_id', userId);
+      } catch (e) {
+        debugPrint('Supabase clear recipes note: $e');
       }
     }
   }

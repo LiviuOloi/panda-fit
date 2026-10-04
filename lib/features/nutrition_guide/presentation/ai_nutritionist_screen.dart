@@ -321,7 +321,7 @@ class _AiNutritionistScreenState extends ConsumerState<AiNutritionistScreen> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('"${recipe.title}" saved to your personal menu!'),
+          content: Text('"${recipe.title}" a fost salvată în meniul tău personal! 🐼'),
           backgroundColor: AppColors.emerald,
         ),
       );
@@ -329,7 +329,36 @@ class _AiNutritionistScreenState extends ConsumerState<AiNutritionistScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error saving recipe: $e'),
+          content: Text('Eroare la salvare: $e'),
+          backgroundColor: AppColors.rose,
+        ),
+      );
+    }
+  }
+
+  Future<void> _saveAllRecipesToUserMenu(List<MealRecipe> recipes) async {
+    final user = ref.read(currentUserProvider);
+    final userId = user?.id ?? widget.profile.id;
+
+    try {
+      final repo = ref.read(recipesRepositoryProvider);
+      await repo.saveBatchMealPlan(recipes, userId);
+
+      ref.invalidate(allRecipesProvider);
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Toate cele ${recipes.length} mese au fost salvate în meniul tău zilnic! 🐼🎉'),
+          backgroundColor: AppColors.emerald,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Eroare la salvare: $e'),
           backgroundColor: AppColors.rose,
         ),
       );
@@ -470,7 +499,7 @@ class _AiNutritionistScreenState extends ConsumerState<AiNutritionistScreen> {
                   children: [
                     SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation(AppColors.emerald))),
                     SizedBox(width: 10),
-                    Text('Panda AI is analyzing macros & computing recipes...', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
+                    Text('Panda AI analizează macronutrienții & calculează planul...', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
                   ],
                 ),
               ),
@@ -491,8 +520,8 @@ class _AiNutritionistScreenState extends ConsumerState<AiNutritionistScreen> {
                       borderRadius: BorderRadius.circular(6),
                       child: Image.memory(
                         _selectedImageBytes!,
-                        width: 44,
-                        height: 44,
+                        width: 40,
+                        height: 40,
                         fit: BoxFit.cover,
                       ),
                     ),
@@ -534,11 +563,11 @@ class _AiNutritionistScreenState extends ConsumerState<AiNutritionistScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               child: Row(
                 children: [
-                  _buildQuickChip('📊 Maintenance & TDEE Analysis'),
-                  _buildQuickChip('🔥 Generate Cutting Plan'),
-                  _buildQuickChip('🐟 High-Fish & Salmon Menu'),
-                  _buildQuickChip('🚫 Dairy-Free / No Lactose'),
-                  _buildQuickChip('⚡ Quick 15-Minute Meals'),
+                  _buildQuickChip('🔥 Generează Plan Alimentar (4 Mese)'),
+                  _buildQuickChip('📊 Analiză Mentenanță & TDEE'),
+                  _buildQuickChip('🐟 Meniu Bogat în Pește & Somon'),
+                  _buildQuickChip('🚫 Fără Lactate'),
+                  _buildQuickChip('⚡ Mese Rapide 15 Min'),
                 ],
               ),
             ),
@@ -567,8 +596,8 @@ class _AiNutritionistScreenState extends ConsumerState<AiNutritionistScreen> {
                       style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
                       decoration: InputDecoration(
                         hintText: _selectedImageBytes != null
-                            ? 'Add instructions for this label (optional)...'
-                            : 'Ask Panda AI or attach a label photo...',
+                            ? 'Instrucțiuni despre această etichetă...'
+                            : 'Scrie-i antrenorului Panda AI sau atașează o poză...',
                         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                         border: InputBorder.none,
                         enabledBorder: InputBorder.none,
@@ -607,16 +636,30 @@ class _AiNutritionistScreenState extends ConsumerState<AiNutritionistScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Padding(
-          padding: EdgeInsets.symmetric(vertical: 8.0),
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8.0),
           child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Icon(Icons.restaurant_menu, color: AppColors.emeraldLight, size: 18),
-              SizedBox(width: 8),
-              Text(
-                'AI Proposed Meals (Glycemic & Raw Weighed)',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+              const Row(
+                children: [
+                  Icon(Icons.restaurant_menu, color: AppColors.emeraldLight, size: 18),
+                  SizedBox(width: 8),
+                  Text(
+                    'Mese Propuse de Panda AI (Gramaje Crude/Uscate)',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                  ),
+                ],
               ),
+              if (recipes.length > 1)
+                TextButton.icon(
+                  icon: const Icon(Icons.bookmark_add, size: 16, color: AppColors.cyanLight),
+                  label: const Text(
+                    'Salvează Tot Planul',
+                    style: TextStyle(color: AppColors.cyanLight, fontSize: 12, fontWeight: FontWeight.bold),
+                  ),
+                  onPressed: () => _saveAllRecipesToUserMenu(recipes),
+                ),
             ],
           ),
         ),
@@ -680,7 +723,7 @@ class _AiNutritionistScreenState extends ConsumerState<AiNutritionistScreen> {
             ),
             const SizedBox(height: 14),
             PandaButton(
-              label: 'Save to My Menu',
+              label: 'Salvează în Meniul Meu',
               icon: Icons.bookmark_add_outlined,
               variant: PandaButtonVariant.secondary,
               width: double.infinity,
