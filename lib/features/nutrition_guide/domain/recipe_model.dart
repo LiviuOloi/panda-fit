@@ -28,6 +28,7 @@ class RecipeIngredient {
 
 class MealRecipe {
   final String id;
+  final String? userId; // null for system templates, set for personal recipes
   final String category; // 'BREAKFAST', 'SNACK', 'DINNER', 'CUSTOM'
   final String? code;
   final String title;
@@ -40,6 +41,7 @@ class MealRecipe {
 
   const MealRecipe({
     required this.id,
+    this.userId,
     required this.category,
     this.code,
     required this.title,
@@ -55,17 +57,35 @@ class MealRecipe {
     final rawIngredients = json['ingredients'] as List<dynamic>? ?? [];
     return MealRecipe(
       id: json['id'] as String? ?? '',
-      category: json['category'] as String,
+      userId: json['user_id'] as String?,
+      category: json['category'] as String? ?? 'CUSTOM',
       code: json['code'] as String?,
-      title: json['title'] as String,
+      title: json['title'] as String? ?? 'Custom Meal',
       ingredients: rawIngredients
           .map((i) => RecipeIngredient.fromJson(i as Map<String, dynamic>))
           .toList(),
-      calories: (json['calories'] as num).toInt(),
+      calories: (json['calories'] as num?)?.toInt() ?? 0,
       proteinG: (json['protein_g'] as num?)?.toDouble(),
       carbsG: (json['carbs_g'] as num?)?.toDouble(),
       fatG: (json['fat_g'] as num?)?.toDouble(),
       instructions: json['instructions'] as String?,
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    final map = <String, dynamic>{
+      'category': category,
+      'title': title,
+      'ingredients': ingredients.map((i) => i.toJson()).toList(),
+      'calories': calories,
+      'protein_g': proteinG,
+      'carbs_g': carbsG,
+      'fat_g': fatG,
+      'instructions': instructions,
+    };
+    if (id.isNotEmpty) map['id'] = id;
+    if (userId != null) map['user_id'] = userId;
+    if (code != null) map['code'] = code;
+    return map;
   }
 }

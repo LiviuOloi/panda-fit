@@ -1,12 +1,69 @@
 import 'package:flutter/material.dart';
-import '../../../../core/constants/app_colors.dart';
-import '../../../../core/widgets/glass_card.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/constants/app_colors.dart';
+import '../../../core/widgets/glass_card.dart';
+import '../../../core/widgets/panda_button.dart';
+import '../../auth/presentation/auth_controller.dart';
+import '../../missions/domain/mission_model.dart';
+import '../../profile/domain/profile_model.dart';
+import '../../profile/presentation/profile_controller.dart';
+import '../domain/recipe_model.dart';
+import 'ai_nutritionist_screen.dart';
+import 'custom_recipe_dialog.dart';
 
-class NutritionGuideScreen extends StatelessWidget {
+class NutritionGuideScreen extends ConsumerWidget {
   const NutritionGuideScreen({super.key});
 
+  void _openAiNutritionist(BuildContext context, UserProfile profile, Mission activeMission) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => AiNutritionistScreen(
+          profile: profile,
+          activeMission: activeMission,
+        ),
+      ),
+    );
+  }
+
+  void _openCustomRecipeDialog(BuildContext context, [MealRecipe? recipe]) {
+    showDialog<void>(
+      context: context,
+      builder: (_) => CustomRecipeDialog(existingRecipe: recipe),
+    );
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(currentUserProvider);
+    final profileAsync = ref.watch(userProfileProvider);
+    final recipesAsync = ref.watch(allRecipesProvider);
+
+    // Fallback profile / mission for demonstration if not loaded
+    final profile = profileAsync.valueOrNull ??
+        UserProfile(
+          id: user?.id ?? 'demo',
+          username: 'panda_user',
+          firstName: 'Panda',
+          lastName: 'Member',
+          sex: 'MALE',
+          birthDate: DateTime(1995, 1, 1),
+          heightCm: 180.0,
+          profileStartWeight: 98.4,
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        );
+
+    final activeMission = Mission(
+      id: 'm-1',
+      userId: profile.id,
+      missionType: MissionType.cutting,
+      missionStartWeight: profile.profileStartWeight,
+      targetWeight: (profile.profileStartWeight - 5.0),
+      startedAt: DateTime.now(),
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+    );
+
     return Scaffold(
       body: SafeArea(
         child: SingleChildScrollView(
@@ -16,7 +73,7 @@ class NutritionGuideScreen extends StatelessWidget {
             children: [
               // Header
               const Text(
-                'NUTRITION & PROTOCOLS',
+                'NUTRITION & AI COACH',
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
@@ -36,7 +93,57 @@ class NutritionGuideScreen extends StatelessWidget {
               ),
               const SizedBox(height: 20),
 
-              // Weighing Protocol Banner
+              // AI Nutritionist Feature Banner
+              GlassCard(
+                borderColor: AppColors.emerald.withValues(alpha: 0.5),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: AppColors.emerald.withValues(alpha: 0.2),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.auto_awesome, color: AppColors.emeraldLight, size: 22),
+                        ),
+                        const SizedBox(width: 12),
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Panda AI Nutritionist',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                              Text(
+                                'Planuri alimentare adaptate pe greutatea și preferințele tale',
+                                style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    PandaButton(
+                      label: '✨ Deschide Panda AI Nutritionist',
+                      icon: Icons.chat_bubble_outline,
+                      width: double.infinity,
+                      onPressed: () => _openAiNutritionist(context, profile, activeMission),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // Weighing Protocol Card
               GlassCard(
                 borderColor: AppColors.cyan.withValues(alpha: 0.4),
                 child: Column(
@@ -57,86 +164,173 @@ class NutritionGuideScreen extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 12),
-                    _buildProtocolItem('Meat / Poultry', 'Weigh in RAW / uncooked state (moisture loss varies).'),
-                    _buildProtocolItem('Rice / Carbs', 'Weigh in DRY / uncooked state (e.g. 125g dry rice).'),
+                    _buildProtocolItem('Meat / Poultry / Fish', 'Weigh in RAW / uncooked state (moisture loss varies).'),
+                    _buildProtocolItem('Rice / Grains / Pasta', 'Weigh in DRY / uncooked state (e.g. 100g-125g dry rice).'),
                     _buildProtocolItem('Vegetables', 'Weigh FROZEN / raw state for accurate glycemic fiber math.'),
-                    _buildProtocolItem('Cooking Oils', 'Measured in grams/ml (never pour unmeasured).'),
+                    _buildProtocolItem('Cooking Oils', 'Measured strictly in grams/ml (never unmeasured).'),
                   ],
                 ),
               ),
               const SizedBox(height: 24),
 
-              // Meal Plans Accordion / Cards
-              const Text(
-                'Predefined Quick Meal Options',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
+              // User's Custom Meals Section
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Meniurile Tale Personale',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  TextButton.icon(
+                    onPressed: () => _openCustomRecipeDialog(context),
+                    icon: const Icon(Icons.add, size: 18, color: AppColors.emerald),
+                    label: const Text('+ Masă Nouă', style: TextStyle(color: AppColors.emerald, fontWeight: FontWeight.bold)),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+
+              recipesAsync.when(
+                loading: () => const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(24.0),
+                    child: CircularProgressIndicator(valueColor: AlwaysStoppedAnimation(AppColors.emerald)),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 14),
+                error: (err, _) => Center(
+                  child: Text('Eroare la încărcarea rețetelor: $err', style: const TextStyle(color: AppColors.rose)),
+                ),
+                data: (recipes) {
+                  if (recipes.isEmpty) {
+                    return GlassCard(
+                      child: Center(
+                        child: Column(
+                          children: [
+                            const Icon(Icons.restaurant, color: AppColors.textMuted, size: 36),
+                            const SizedBox(height: 8),
+                            const Text(
+                              'Nu ai rețete salvate încă.',
+                              style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(height: 4),
+                            const Text(
+                              'Creează una manual sau cere o sugestie AI!',
+                              style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+                            ),
+                            const SizedBox(height: 12),
+                            PandaButton(
+                              label: 'Creează Prima Masă',
+                              icon: Icons.add,
+                              variant: PandaButtonVariant.outline,
+                              onPressed: () => _openCustomRecipeDialog(context),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
 
-              _buildMealCard(
-                title: 'Breakfast: Standard Omelet & Greens',
-                macros: '620 kcal · 42g P · 48g C · 26g F',
-                ingredients: [
-                  '3 whole eggs (whisked)',
-                  '100g Cottage Cheese Light (3%)',
-                  '200g Veggies (80g broccoli + 60g beans + 60g mushrooms)',
-                  '70-80g Graham bread',
-                  '5g measured Olive Oil',
-                ],
+                  return Column(
+                    children: recipes.map((r) => _buildRecipeCard(context, ref, r)).toList(),
+                  );
+                },
               ),
-              const SizedBox(height: 12),
 
-              _buildMealCard(
-                title: 'Snack: Greek Yogurt & Berry Bowl',
-                macros: '240 kcal · 18g P · 18g C · 9.5g F',
-                ingredients: [
-                  '150g Greek Yogurt (2% fat)',
-                  '75g fresh or frozen blueberries',
-                  '10g Chia seeds',
-                  '10g 100% natural peanut butter',
-                ],
-              ),
-              const SizedBox(height: 12),
-
-              _buildMealCard(
-                title: 'Dinner Option A: Chicken Breast & Rice',
-                macros: '780 kcal · 62g P · 105g C · 8g F',
-                ingredients: [
-                  '200-250g Chicken Breast (raw weighed)',
-                  '125g Panzani / Basmati Rice (dry weighed)',
-                  '250g Mixed Veggies (raw/frozen)',
-                  '50-100g Pickles in brine',
-                ],
-              ),
-              const SizedBox(height: 12),
-
-              _buildMealCard(
-                title: 'Dinner Option B: Pork Collar & High Veggies',
-                macros: '540 kcal · 44g P · 20g C · 32g F',
-                ingredients: [
-                  '180-200g Pork Collar (raw weighed, no added oil)',
-                  '300g Mixed Veggies (steamed or air-fried)',
-                  '50-100g Pickles in brine',
-                ],
-              ),
-              const SizedBox(height: 12),
-
-              _buildMealCard(
-                title: 'Dinner Option C: Chicken & Potato Wedges',
-                macros: '610 kcal · 58g P · 48g C · 14g F',
-                ingredients: [
-                  '200-250g Chicken Breast (raw weighed)',
-                  '200g Gustona Potato Wedges (air-fried)',
-                  '50-100g Pickles in brine',
-                ],
-              ),
               const SizedBox(height: 24),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRecipeCard(BuildContext context, WidgetRef ref, MealRecipe recipe) {
+    final isCustom = recipe.userId != null && recipe.userId!.isNotEmpty;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: GlassCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: isCustom
+                            ? AppColors.cyan.withValues(alpha: 0.2)
+                            : AppColors.emerald.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        isCustom ? 'PERSONAL · ${recipe.category}' : recipe.category,
+                        style: TextStyle(
+                          color: isCustom ? AppColors.cyanLight : AppColors.emeraldLight,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      recipe.title,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                  ],
+                ),
+                if (isCustom)
+                  Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.edit_outlined, size: 18, color: AppColors.textMuted),
+                        onPressed: () => _openCustomRecipeDialog(context, recipe),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.rose),
+                        onPressed: () async {
+                          final repo = ref.read(recipesRepositoryProvider);
+                          await repo.deleteCustomRecipe(recipe.id);
+                          ref.invalidate(allRecipesProvider);
+                        },
+                      ),
+                    ],
+                  ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '${recipe.calories} kcal · ${recipe.proteinG ?? 0}g P · ${recipe.carbsG ?? 0}g C · ${recipe.fatG ?? 0}g F',
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppColors.emeraldLight,
+              ),
+            ),
+            const SizedBox(height: 10),
+            const Divider(color: AppColors.surfaceElevated, height: 1),
+            const SizedBox(height: 8),
+            ...recipe.ingredients.map(
+              (ing) => Padding(
+                padding: const EdgeInsets.symmetric(vertical: 2.0),
+                child: Text(
+                  '• ${ing.name}: ${ing.amount} (${ing.state})',
+                  style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -169,49 +363,6 @@ class NutritionGuideScreen extends StatelessWidget {
                   ),
                   TextSpan(text: text),
                 ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMealCard({
-    required String title,
-    required String macros,
-    required List<String> ingredients,
-  }) {
-    return GlassCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            macros,
-            style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: AppColors.emeraldLight,
-            ),
-          ),
-          const SizedBox(height: 12),
-          const Divider(color: AppColors.surfaceElevated, height: 1),
-          const SizedBox(height: 10),
-          ...ingredients.map(
-            (ing) => Padding(
-              padding: const EdgeInsets.symmetric(vertical: 2.0),
-              child: Text(
-                '• $ing',
-                style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
               ),
             ),
           ),

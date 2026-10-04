@@ -10,13 +10,17 @@ class RecipesRepository {
   RecipesRepository([SupabaseClient? client])
       : _client = client ?? SupabaseService.client;
 
-  Future<List<MealRecipe>> fetchRecipes() async {
+  Future<List<MealRecipe>> fetchAllRecipes(String? userId) async {
     if (_client != null) {
       try {
-        final res = await _client
-            .from('meal_recipes')
-            .select()
-            .order('category', ascending: true);
+        var query = _client.from('meal_recipes').select();
+        if (userId != null) {
+          query = query.or('user_id.is.null,user_id.eq.$userId');
+        } else {
+          query = query.filter('user_id', 'is', 'null');
+        }
+
+        final res = await query.order('category', ascending: true);
 
         if (res.isNotEmpty) {
           return (res as List<dynamic>)
@@ -24,7 +28,7 @@ class RecipesRepository {
               .toList();
         }
       } catch (_) {
-        // Fallback to local asset seed if offline or table empty
+        // Fallback to local asset seed if offline or error
       }
     }
 
@@ -36,5 +40,25 @@ class RecipesRepository {
     } catch (_) {
       return [];
     }
+  }
+
+  Future<MealRecipe?> createCustomRecipe(MealRecipe recipe) async {
+    if (_client == null) return null;
+    final payload = recipe.toJson();
+    final res = await _client.from('meal_recipes').insert(payload).select().single();
+    return MealRecipe.fromJson(res);
+  }
+
+  Future<void> updateCustomRecipe(MealRecipe recipe) async {
+    if (_client == null || recipe.id.isEmpty) return;
+    await _client
+        .from('meal_recipes')
+        .update(recipe.toJson())
+        .eq('id', recipe.id);
+  }
+
+  Future<void> deleteCustomRecipe(String recipeId) async {
+    if (_client == null) return;
+    await _client.from('meal_recipes').delete().eq('id', recipeId);
   }
 }

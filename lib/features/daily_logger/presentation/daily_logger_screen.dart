@@ -1,19 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/utils/calculation_engine.dart';
 import '../../../../core/widgets/glass_card.dart';
 import '../../../../core/widgets/panda_button.dart';
+import '../../nutrition_guide/presentation/ai_nutritionist_screen.dart';
 
-class DailyLoggerScreen extends StatefulWidget {
+class DailyLoggerScreen extends ConsumerStatefulWidget {
   final VoidCallback? onSaved;
 
   const DailyLoggerScreen({super.key, this.onSaved});
 
   @override
-  State<DailyLoggerScreen> createState() => _DailyLoggerScreenState();
+  ConsumerState<DailyLoggerScreen> createState() => _DailyLoggerScreenState();
 }
 
-class _DailyLoggerScreenState extends State<DailyLoggerScreen> {
+class _DailyLoggerScreenState extends ConsumerState<DailyLoggerScreen> {
   final _weightController = TextEditingController(text: '98.4');
   final _caloriesInController = TextEditingController(text: '2300');
   final _caloriesOutController = TextEditingController(text: '450');
@@ -21,7 +23,7 @@ class _DailyLoggerScreenState extends State<DailyLoggerScreen> {
 
   bool _swimming = true;
   bool _planFollowed = true;
-  String _selectedDinner = 'A'; // 'A', 'B', 'C', 'CUSTOM', 'NONE'
+  String _selectedDinner = 'CUSTOM';
 
   @override
   void dispose() {
@@ -120,13 +122,13 @@ class _DailyLoggerScreenState extends State<DailyLoggerScreen> {
               ),
               const SizedBox(height: 16),
 
-              // 2. Predefined Dinner Selector
+              // 2. Predefined & Personal Dinner Selector
               GlassCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      'Dinner Selection',
+                      'Opțiune Cină / Masă',
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.bold,
@@ -135,20 +137,36 @@ class _DailyLoggerScreenState extends State<DailyLoggerScreen> {
                     ),
                     const SizedBox(height: 4),
                     const Text(
-                      'Select predefined weighed meal option or custom',
+                      'Alege o opțiune din meniul tău personal sau masă custom',
                       style: TextStyle(color: AppColors.textMuted, fontSize: 12),
                     ),
                     const SizedBox(height: 16),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        _buildDinnerChip('A', 'Option A: Chicken & Rice (125g)'),
-                        _buildDinnerChip('B', 'Option B: Pork & High Veggies'),
-                        _buildDinnerChip('C', 'Option C: Chicken & Wedges'),
-                        _buildDinnerChip('CUSTOM', 'Custom Dinner'),
-                      ],
-                    ),
+                    ref.watch(allRecipesProvider).when(
+                          loading: () => const Center(
+                            child: Padding(
+                              padding: EdgeInsets.all(8.0),
+                              child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation(AppColors.emerald)),
+                            ),
+                          ),
+                          error: (_, __) => _buildDinnerChip('CUSTOM', 'Cină Custom / În afara meniului'),
+                          data: (recipes) {
+                            final dinnerOptions = recipes.where((r) => r.category == 'DINNER' || r.category == 'CUSTOM').toList();
+
+                            return Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: [
+                                ...dinnerOptions.map(
+                                  (r) => _buildDinnerChip(
+                                    r.id.isNotEmpty ? r.id : (r.code ?? r.title),
+                                    r.title,
+                                  ),
+                                ),
+                                _buildDinnerChip('CUSTOM', 'Cină Custom (În afara meniului)'),
+                              ],
+                            );
+                          },
+                        ),
                   ],
                 ),
               ),

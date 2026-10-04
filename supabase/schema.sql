@@ -63,8 +63,9 @@ CREATE INDEX IF NOT EXISTS idx_missions_user_status ON public.missions (user_id,
 -- 4. MEAL RECIPES TABLE
 CREATE TABLE IF NOT EXISTS public.meal_recipes (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE, -- NULL for system templates, set for personal user recipes
     category TEXT NOT NULL CHECK (category IN ('BREAKFAST', 'SNACK', 'DINNER', 'CUSTOM')),
-    code TEXT UNIQUE,
+    code TEXT,
     title TEXT NOT NULL,
     ingredients JSONB NOT NULL,
     calories INTEGER NOT NULL,
@@ -74,6 +75,8 @@ CREATE TABLE IF NOT EXISTS public.meal_recipes (
     instructions TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
 );
+
+CREATE INDEX IF NOT EXISTS idx_meal_recipes_user ON public.meal_recipes (user_id);
 
 -- ============================================================================
 -- ROW LEVEL SECURITY (RLS) POLICIES
@@ -109,10 +112,23 @@ DO $$ BEGIN
         FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
 END $$;
 
--- Meal Recipes Policies (Public Read)
+-- Meal Recipes Policies (System templates public, custom recipes user-specific)
 DO $$ BEGIN
-    DROP POLICY IF EXISTS "Anyone can view meal recipes" ON public.meal_recipes;
-    CREATE POLICY "Anyone can view meal recipes" ON public.meal_recipes FOR SELECT USING (true);
+    DROP POLICY IF EXISTS "Anyone can view system or own meal recipes" ON public.meal_recipes;
+    CREATE POLICY "Anyone can view system or own meal recipes" ON public.meal_recipes
+        FOR SELECT USING (user_id IS NULL OR user_id = auth.uid());
+
+    DROP POLICY IF EXISTS "Users can insert own meal recipes" ON public.meal_recipes;
+    CREATE POLICY "Users can insert own meal recipes" ON public.meal_recipes
+        FOR INSERT WITH CHECK (user_id = auth.uid());
+
+    DROP POLICY IF EXISTS "Users can update own meal recipes" ON public.meal_recipes;
+    CREATE POLICY "Users can update own meal recipes" ON public.meal_recipes
+        FOR UPDATE USING (user_id = auth.uid());
+
+    DROP POLICY IF EXISTS "Users can delete own meal recipes" ON public.meal_recipes;
+    CREATE POLICY "Users can delete own meal recipes" ON public.meal_recipes
+        FOR DELETE USING (user_id = auth.uid());
 END $$;
 
 -- ============================================================================
