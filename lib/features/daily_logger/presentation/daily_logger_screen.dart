@@ -212,7 +212,9 @@ class _DailyLoggerScreenState extends State<DailyLoggerScreen> {
                   children: [
                     SwitchListTile(
                       contentPadding: EdgeInsets.zero,
-                      activeColor: AppColors.cyan,
+                      thumbColor: WidgetStateProperty.resolveWith(
+                        (states) => states.contains(WidgetState.selected) ? AppColors.cyan : null,
+                      ),
                       title: const Text('Swimming Session', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
                       subtitle: const Text('Logged active pool workout', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
                       value: _swimming,
@@ -221,7 +223,9 @@ class _DailyLoggerScreenState extends State<DailyLoggerScreen> {
                     const Divider(color: AppColors.surfaceElevated),
                     SwitchListTile(
                       contentPadding: EdgeInsets.zero,
-                      activeColor: AppColors.emerald,
+                      thumbColor: WidgetStateProperty.resolveWith(
+                        (states) => states.contains(WidgetState.selected) ? AppColors.emerald : null,
+                      ),
                       title: const Text('Nutrition Plan Followed', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
                       subtitle: const Text('Weighed foods and raw proteins as prescribed', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
                       value: _planFollowed,

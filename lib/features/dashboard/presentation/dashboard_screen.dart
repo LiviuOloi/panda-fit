@@ -139,13 +139,13 @@ class DashboardScreen extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 14),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(6),
+                    const ClipRRect(
+                      borderRadius: BorderRadius.all(Radius.circular(6)),
                       child: LinearProgressIndicator(
                         value: missionProgress,
                         minHeight: 8,
                         backgroundColor: AppColors.surfaceElevated,
-                        valueColor: const AlwaysStoppedAnimation<Color>(AppColors.emerald),
+                        valueColor: AlwaysStoppedAnimation<Color>(AppColors.emerald),
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -172,8 +172,8 @@ class DashboardScreen extends StatelessWidget {
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                     childAspectRatio: isWide ? 1.4 : 1.15,
-                    children: [
-                      const MetricSummaryCard(
+                    children: const [
+                      MetricSummaryCard(
                         title: 'Morning Weight',
                         value: '$currentWeight kg',
                         delta: '-0.2 kg',
@@ -181,7 +181,7 @@ class DashboardScreen extends StatelessWidget {
                         icon: Icons.scale,
                         accentColor: AppColors.cyan,
                       ),
-                      const MetricSummaryCard(
+                      MetricSummaryCard(
                         title: '7-Day Rolling MA',
                         value: '$movingAvg kg',
                         delta: '-0.7 kg/wk',
@@ -197,7 +197,7 @@ class DashboardScreen extends StatelessWidget {
                         accentColor: AppColors.amber,
                         delta: '$totalDelta kg',
                       ),
-                      const MetricSummaryCard(
+                      MetricSummaryCard(
                         title: 'Net Calories',
                         value: '1,850 kcal',
                         subtitle: '2,300 in · 450 out',

@@ -43,7 +43,7 @@ class PandaButton extends StatelessWidget {
         break;
     }
 
-    Widget content = isLoading
+    final Widget content = isLoading
         ? const SizedBox(
             width: 20,
             height: 20,

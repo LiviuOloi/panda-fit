@@ -9,6 +9,9 @@ analyzer:
     missing_required_param: error
     missing_return: error
     todo: ignore
+  exclude:
+    - build/**
+    - web/**
 
 linter:
   rules:

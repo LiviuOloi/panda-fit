@@ -59,9 +59,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     return Scaffold(
       body: screens[_currentIndex],
       bottomNavigationBar: Container(
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           color: AppColors.surface,
-          border: const Border(
+          border: Border(
             top: BorderSide(color: AppColors.glassBorder, width: 1),
           ),
         ),

@@ -127,7 +127,7 @@ class MissionsScreen extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text('Start: ${activeMission.missionStartWeight} kg', style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
-                        Text('Current: $currentWeight kg', style: const TextStyle(color: AppColors.cyan, fontSize: 12, fontWeight: FontWeight.bold)),
+                        const Text('Current: 98.4 kg', style: TextStyle(color: AppColors.cyan, fontSize: 12, fontWeight: FontWeight.bold)),
                         Text('Strict Target: < ${activeMission.targetWeight} kg', style: const TextStyle(color: AppColors.emeraldLight, fontSize: 12, fontWeight: FontWeight.bold)),
                       ],
                     ),
@@ -137,17 +137,17 @@ class MissionsScreen extends StatelessWidget {
               const SizedBox(height: 24),
 
               // Domain Invariant Rule Note Card
-              GlassCard(
+              const GlassCard(
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(Icons.verified_outlined, color: AppColors.cyan, size: 22),
-                    const SizedBox(width: 12),
+                    Icon(Icons.verified_outlined, color: AppColors.cyan, size: 22),
+                    SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
+                          Text(
                             'Strict Inequality Invariant',
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
@@ -155,12 +155,12 @@ class MissionsScreen extends StatelessWidget {
                               color: AppColors.textPrimary,
                             ),
                           ),
-                          const SizedBox(height: 4),
+                          SizedBox(height: 4),
                           Text(
                             'A cutting mission requires weighing strictly less than the target weight (e.g. \u2264 93.9 kg for a 94.0 kg target). Tying the target does not trigger accomplishment.',
                             style: TextStyle(
                               fontSize: 12,
-                              color: AppColors.textSecondary.withValues(alpha: 0.9),
+                              color: AppColors.textSecondary,
                               height: 1.4,
                             ),
                           ),

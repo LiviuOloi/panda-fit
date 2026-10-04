@@ -23,8 +23,6 @@ class ProfileScreen extends StatelessWidget {
       updatedAt: DateTime.now(),
     );
 
-    const hasDailyEntries = true; // Simulating entries exist -> Lock active
-
     return Scaffold(
       body: SafeArea(
         child: SingleChildScrollView(
@@ -92,7 +90,7 @@ class ProfileScreen extends StatelessWidget {
 
               // Profile Start Weight Immutability Guardrail Card
               GlassCard(
-                borderColor: hasDailyEntries ? AppColors.amber.withValues(alpha: 0.4) : null,
+                borderColor: AppColors.amber.withValues(alpha: 0.4),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -107,28 +105,27 @@ class ProfileScreen extends StatelessWidget {
                             color: AppColors.textPrimary,
                           ),
                         ),
-                        if (hasDailyEntries)
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: AppColors.amber.withValues(alpha: 0.2),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: const Row(
-                              children: [
-                                Icon(Icons.lock, size: 12, color: AppColors.amber),
-                                SizedBox(width: 4),
-                                Text(
-                                  'LOCKED',
-                                  style: TextStyle(
-                                    color: AppColors.amber,
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: AppColors.amber.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(6),
                           ),
+                          child: const Row(
+                            children: [
+                              Icon(Icons.lock, size: 12, color: AppColors.amber),
+                              SizedBox(width: 4),
+                              Text(
+                                'LOCKED',
+                                style: TextStyle(
+                                  color: AppColors.amber,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 8),
