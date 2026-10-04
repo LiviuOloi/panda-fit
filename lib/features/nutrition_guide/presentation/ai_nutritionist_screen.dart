@@ -1,5 +1,7 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/calculation_engine.dart';
 import '../../../core/widgets/glass_card.dart';
@@ -41,6 +43,7 @@ class _AiNutritionistScreenState extends ConsumerState<AiNutritionistScreen> {
   final _aiService = AiNutritionService();
   final _textController = TextEditingController();
   final _scrollController = ScrollController();
+  static const _chatStorageKey = 'panda_eats_ai_chat_history_cache';
 
   bool _isLoading = false;
   final List<Map<String, dynamic>> _messages = [];
@@ -49,12 +52,30 @@ class _AiNutritionistScreenState extends ConsumerState<AiNutritionistScreen> {
   @override
   void initState() {
     super.initState();
-    final maintenance = CalculationEngine.calculateMaintenanceCalories(
-      weightKg: widget.profile.profileStartWeight,
-      heightCm: widget.profile.heightCm,
-      age: widget.profile.age,
-      sex: widget.profile.sex,
-    );
+    _loadChatHistory();
+  }
+
+  Future<void> _loadChatHistory() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_chatStorageKey);
+      if (raw != null) {
+        final list = json.decode(raw) as List<dynamic>;
+        if (list.isNotEmpty) {
+          setState(() {
+            _messages.clear();
+            _messages.addAll(list.map((e) => Map<String, dynamic>.from(e as Map)));
+          });
+          return;
+        }
+      }
+    } catch (_) {}
+
+    _setDefaultWelcome();
+  }
+
+  void _setDefaultWelcome() {
+    final isCutting = widget.activeMission.missionType == MissionType.cutting;
     final target = CalculationEngine.calculateRecommendedTargetCalories(
       weightKg: widget.profile.profileStartWeight,
       heightCm: widget.profile.heightCm,
@@ -62,12 +83,34 @@ class _AiNutritionistScreenState extends ConsumerState<AiNutritionistScreen> {
       sex: widget.profile.sex,
       missionType: widget.activeMission.missionType.name,
     );
-    final isCutting = widget.activeMission.missionType == MissionType.cutting;
 
-    _messages.add({
-      'role': 'ai',
-      'text': 'Hello ${widget.profile.firstName}! I am Panda Coach AI 🐼.\n\n📊 **Your Metabolic Analysis:**\n• Weight: ${widget.profile.profileStartWeight} kg · Height: ${widget.profile.heightCm} cm · Age: ${widget.profile.age} yrs\n• **Maintenance Calories (TDEE):** ~$maintenance kcal/day\n• **Recommended Daily Target (${widget.activeMission.missionType.name.toUpperCase()}):** ~$target kcal/day ${isCutting ? '(-450 kcal deficit)' : '(+300 kcal surplus)'}\n\nLet me know your dietary preferences (e.g. no pork, more fish, quick 15-min recipes) and I will craft your ideal glycemic meal plan!',
+    setState(() {
+      _messages.clear();
+      _generatedRecipes.clear();
+      _messages.add({
+        'role': 'ai',
+        'text': 'Hello ${widget.profile.firstName}! I am Panda Eats AI Coach 🐼.\n\nYour target is **~$target kcal/day** (${isCutting ? "Cutting Deficit" : "Bulking Surplus"}).\nHow can I help you optimize your meals today?',
+      });
     });
+    _saveChatHistory();
+  }
+
+  Future<void> _saveChatHistory() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_chatStorageKey, json.encode(_messages));
+    } catch (_) {}
+  }
+
+  void _startNewCleanChat() {
+    _setDefaultWelcome();
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Started a fresh clean chat session!'),
+        backgroundColor: AppColors.emerald,
+        duration: Duration(seconds: 2),
+      ),
+    );
   }
 
   @override
@@ -88,6 +131,7 @@ class _AiNutritionistScreenState extends ConsumerState<AiNutritionistScreen> {
     });
 
     _scrollToBottom();
+    await _saveChatHistory();
 
     final customApiKey = ref.read(geminiApiKeyProvider).valueOrNull;
 
@@ -127,6 +171,7 @@ class _AiNutritionistScreenState extends ConsumerState<AiNutritionistScreen> {
     });
 
     _scrollToBottom();
+    await _saveChatHistory();
   }
 
   Future<void> _saveRecipeToUserMenu(MealRecipe recipe) async {
@@ -208,6 +253,11 @@ class _AiNutritionistScreenState extends ConsumerState<AiNutritionistScreen> {
           ],
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh, color: AppColors.textSecondary, size: 22),
+            tooltip: 'Start Fresh Clean Chat',
+            onPressed: _startNewCleanChat,
+          ),
           IconButton(
             icon: Icon(
               Icons.key,

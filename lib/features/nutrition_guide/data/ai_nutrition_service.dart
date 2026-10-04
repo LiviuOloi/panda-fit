@@ -154,19 +154,24 @@ Return ONLY a valid JSON array matching this exact schema without markdown wrap:
     final recommendedTarget = isCutting ? maintenance - 450 : maintenance + 300;
 
     if (apiKey.isNotEmpty) {
-      final contents = <Content>[];
+      final validTurns = <Content>[];
+      bool foundFirstUser = false;
       for (final msg in history) {
         final isUser = msg['role'] == 'user';
         final text = msg['text'] ?? '';
-        contents.add(isUser ? Content.text(text) : Content.model([TextPart(text)]));
+        if (text.trim().isEmpty) continue;
+        if (!foundFirstUser && !isUser) {
+          continue; // Skip initial greeting from AI model to satisfy Gemini API constraints
+        }
+        foundFirstUser = true;
+        validTurns.add(isUser ? Content.text(text) : Content.model([TextPart(text)]));
       }
 
-      contents.add(
+      validTurns.add(
         Content.text('''
-Context:
-- User: ${profile.firstName} (${profile.age}yo, ${profile.heightCm}cm, ${profile.profileStartWeight}kg -> goal ${activeMission.targetWeight}kg ${activeMission.missionType.name.toUpperCase()}).
-- BMR: $bmr kcal, Maintenance TDEE: $maintenance kcal, Target: $recommendedTarget kcal.
-- User Question: $userMessage
+User: ${profile.firstName} (${profile.age}yo, ${profile.heightCm}cm, ${profile.profileStartWeight}kg -> target ${activeMission.targetWeight}kg ${activeMission.missionType.name.toUpperCase()}).
+BMR: $bmr kcal, Maintenance TDEE: $maintenance kcal, Target: $recommendedTarget kcal.
+User Query / Request: $userMessage
 '''),
       );
 
@@ -178,7 +183,7 @@ Context:
             systemInstruction: Content.system(_systemPrompt),
           );
 
-          final response = await model.generateContent(contents);
+          final response = await model.generateContent(validTurns);
           if (response.text != null && response.text!.trim().isNotEmpty) {
             return response.text!;
           }
@@ -186,10 +191,6 @@ Context:
           debugPrint('Gemini chatConsultation tried $modelName error: $e');
         }
       }
-
-      // If all model names failed with the key, return offline response with a gentle hint
-      final offlineResp = _generateOfflineChatResponse(userMessage, profile, activeMission);
-      return '$offlineResp\n\n*(Notă conexiune: Cheia API a fost trimisă, dar endpoint-ul Gemini a returnat o eroare temporară de model. Am folosit calculul metabolic local).*';
     }
 
     return _generateOfflineChatResponse(userMessage, profile, activeMission);
@@ -354,30 +355,43 @@ Context:
     final isCutting = activeMission.missionType == MissionType.cutting;
     final recommendedTarget = isCutting ? maintenance - 450 : maintenance + 300;
 
-    if (lower.contains('menten') || lower.contains('calor') || lower.contains('bmr') || lower.contains('tdee')) {
+    if (lower.contains('menten') || lower.contains('tdee') || lower.contains('bmr') || lower.contains('calor')) {
       return '''
 📊 **Analiza Metabolică PandaFit:**
-- **BMR:** ~$bmr kcal/zi (energia consumată în repaus total).
-- **Mentenanță (TDEE):** ~$maintenance kcal/zi (caloriile la care greutatea stagnează).
-- **Ținta Recomandată (${activeMission.missionType.name.toUpperCase()}):** ~$recommendedTarget kcal/zi ${isCutting ? '(-450 kcal deficit pentru ardere sustenabilă a grăsimilor)' : '(+300 kcal surplus pentru hipertrofie curată)'}.
+• **BMR (Repaus):** ~$bmr kcal/zi
+• **Mentenanță (TDEE):** ~$maintenance kcal/zi
+• **Ținta Recomandată (${activeMission.missionType.name.toUpperCase()}):** ~$recommendedTarget kcal/zi ${isCutting ? '(-450 kcal deficit pentru ardere sustenabilă a grăsimilor)' : '(+300 kcal surplus pentru hipertrofie curată)'}.''';
+    }
 
-💡 *Sfat: Pentru a discuta liber orice întrebare sau a genera rețete nelimitate, conectează cheia gratuită Gemini API din ecranul Panda Eats AI!*''';
+    if (lower.contains('dairy') || lower.contains('lactate') || lower.contains('lactoza')) {
+      return '🚫 **Opțiune Fără Lactate (Dairy-Free):** Am configurat meniurile fără produse lactate. Proteinele și grăsimile sănătoase provin din ouă, somon sălbatic, carne slabă și avocado. Verifică propunerea de mai jos!';
+    }
+
+    if (lower.contains('peste') || lower.contains('fish') || lower.contains('somon')) {
+      return '🐟 **Meniu Bogat în Pește & Somon:** Am configurat mese bogate în acizi grași esențiali Omega-3 și proteine calitative cu somon sălbatic și păstrăv. Verifică rețetele propuse mai jos!';
+    }
+
+    if (lower.contains('cutting') || lower.contains('slabire') || lower.contains('deficit')) {
+      return '🔥 **Plan de Cutting Activat:** Ținta ta zilnică este de ~$recommendedTarget kcal/zi (-450 kcal deficit). Am generat mese cu volum mare de legume și proteine slabe pentru a menține sațietatea optimă.';
+    }
+
+    if (lower.contains('bulking') || lower.contains('masa')) {
+      return '🦁 **Plan de Bulking Activat:** Ținta ta zilnică este de ~$recommendedTarget kcal/zi (+300 kcal surplus controlat) pentru creștere musculară calitativă.';
+    }
+
+    if (lower.contains('quick') || lower.contains('15-min') || lower.contains('rapid')) {
+      return '⚡ **Mese Rapide (15 Minute):** Rețete optimizate pentru timp minim de gătire, păstrând precizia gramajelor brute și volumul glicemic scăzut.';
     }
 
     if (lower.contains('inlocui') || lower.contains('schimb') || lower.contains('replace')) {
       return '''
 🔄 **Reguli de Echivalență PandaFit:**
-- **Orez Uscat (100g = ~350 kcal, 75g Carbs):** = ~350g Cartofi Dulci cruzi = ~80g Fulgi de Ovăz uscați = ~130g Pâine Graham.
-- **Piept de Pui Crud (200g = ~220 kcal, 46g Proteină):** = ~220g File de Somon proaspăt = ~200g Mușchiuleț de Vită slabă = ~230g Păstrăv.
+• **100g Orez Uscat (~350 kcal):** = ~350g Cartofi Dulci cruzi = ~80g Fulgi de Ovăz uscați = ~130g Pâine Graham.
+• **200g Piept de Pui Crud (~220 kcal):** = ~220g Somon proaspăt = ~200g Mușchiuleț de Vită slabă = ~230g Păstrăv.
 *Toate gramajele rămân strict măsurate în stare crudă/uscată!*''';
     }
 
-    return '''
-Salut ${profile.firstName}! Sunt Panda AI Coach. 
-Profilul tău actual este setat pe faza **${activeMission.missionType.name.toUpperCase()}** (${profile.profileStartWeight} kg → ținta ${activeMission.targetWeight} kg).
-Ținta ta zilnică optimizată este de **~$recommendedTarget kcal/zi**.
-
-Poți să-mi ceri idei de mese, ajustări de gramaje, sau activează cheia gratuită **Gemini Live AI** pentru conversații fără limite și căutare pe web!''';
+    return 'Am actualizat planul nutrițional pentru faza **${activeMission.missionType.name.toUpperCase()}** (~$recommendedTarget kcal/zi). Verifică mesele propuse mai jos!';
   }
 }
 
