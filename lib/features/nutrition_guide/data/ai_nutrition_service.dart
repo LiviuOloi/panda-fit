@@ -35,6 +35,16 @@ CORE PRINCIPLES & METABOLIC INVARIANTS:
    - Friendly, clear, and encouraging tone. You communicate naturally in Romanian or English (matching the user's language).
 ''';
 
+  static const List<String> _candidateModels = [
+    'gemini-1.5-flash-latest',
+    'gemini-1.5-flash',
+    'gemini-2.0-flash',
+    'gemini-2.0-flash-exp',
+    'gemini-1.5-pro-latest',
+    'gemini-1.5-pro',
+    'gemini-pro',
+  ];
+
   Future<List<MealRecipe>> generateCustomMealPlan({
     required UserProfile profile,
     required Mission activeMission,
@@ -59,14 +69,7 @@ CORE PRINCIPLES & METABOLIC INVARIANTS:
     final recommendedTarget = isCutting ? maintenance - 450 : maintenance + 300;
 
     if (apiKey.isNotEmpty) {
-      try {
-        final model = GenerativeModel(
-          model: 'gemini-1.5-flash',
-          apiKey: apiKey,
-          systemInstruction: Content.system(_systemPrompt),
-        );
-
-        final prompt = '''
+      final prompt = '''
 User Biometrics:
 - Age: ${profile.age} years old
 - Sex: ${profile.sex}
@@ -101,15 +104,24 @@ Return ONLY a valid JSON array matching this exact schema without markdown wrap:
 ]
 ''';
 
-        final response = await model.generateContent([Content.text(prompt)]);
-        final text = response.text;
-        if (text != null) {
-          final cleaned = _extractJson(text);
-          final decoded = json.decode(cleaned) as List<dynamic>;
-          return decoded.map((r) => MealRecipe.fromJson(r as Map<String, dynamic>)).toList();
+      for (final modelName in _candidateModels) {
+        try {
+          final model = GenerativeModel(
+            model: modelName,
+            apiKey: apiKey,
+            systemInstruction: Content.system(_systemPrompt),
+          );
+
+          final response = await model.generateContent([Content.text(prompt)]);
+          final text = response.text;
+          if (text != null) {
+            final cleaned = _extractJson(text);
+            final decoded = json.decode(cleaned) as List<dynamic>;
+            return decoded.map((r) => MealRecipe.fromJson(r as Map<String, dynamic>)).toList();
+          }
+        } catch (e) {
+          debugPrint('Gemini generateCustomMealPlan tried $modelName error: $e');
         }
-      } catch (e) {
-        debugPrint('Gemini generateCustomMealPlan error: $e');
       }
     }
 
@@ -142,34 +154,42 @@ Return ONLY a valid JSON array matching this exact schema without markdown wrap:
     final recommendedTarget = isCutting ? maintenance - 450 : maintenance + 300;
 
     if (apiKey.isNotEmpty) {
-      try {
-        final model = GenerativeModel(
-          model: 'gemini-1.5-flash',
-          apiKey: apiKey,
-          systemInstruction: Content.system(_systemPrompt),
-        );
+      final contents = <Content>[];
+      for (final msg in history) {
+        final isUser = msg['role'] == 'user';
+        final text = msg['text'] ?? '';
+        contents.add(isUser ? Content.text(text) : Content.model([TextPart(text)]));
+      }
 
-        final contents = <Content>[];
-        for (final msg in history) {
-          final isUser = msg['role'] == 'user';
-          final text = msg['text'] ?? '';
-          contents.add(isUser ? Content.text(text) : Content.model([TextPart(text)]));
-        }
-
-        contents.add(
-          Content.text('''
+      contents.add(
+        Content.text('''
 Context:
 - User: ${profile.firstName} (${profile.age}yo, ${profile.heightCm}cm, ${profile.profileStartWeight}kg -> goal ${activeMission.targetWeight}kg ${activeMission.missionType.name.toUpperCase()}).
 - BMR: $bmr kcal, Maintenance TDEE: $maintenance kcal, Target: $recommendedTarget kcal.
 - User Question: $userMessage
 '''),
-        );
+      );
 
-        final response = await model.generateContent(contents);
-        return response.text ?? 'I could not generate an answer right now.';
-      } catch (e) {
-        return 'Error communicating with Gemini AI: $e. Please verify your API key in Settings.';
+      for (final modelName in _candidateModels) {
+        try {
+          final model = GenerativeModel(
+            model: modelName,
+            apiKey: apiKey,
+            systemInstruction: Content.system(_systemPrompt),
+          );
+
+          final response = await model.generateContent(contents);
+          if (response.text != null && response.text!.trim().isNotEmpty) {
+            return response.text!;
+          }
+        } catch (e) {
+          debugPrint('Gemini chatConsultation tried $modelName error: $e');
+        }
       }
+
+      // If all model names failed with the key, return offline response with a gentle hint
+      final offlineResp = _generateOfflineChatResponse(userMessage, profile, activeMission);
+      return '$offlineResp\n\n*(Notă conexiune: Cheia API a fost trimisă, dar endpoint-ul Gemini a returnat o eroare temporară de model. Am folosit calculul metabolic local).*';
     }
 
     return _generateOfflineChatResponse(userMessage, profile, activeMission);
