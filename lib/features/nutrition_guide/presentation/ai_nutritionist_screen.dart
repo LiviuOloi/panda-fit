@@ -108,7 +108,8 @@ class _AiNutritionistScreenState extends ConsumerState<AiNutritionistScreen> {
       _messages.clear();
       _messages.add({
         'role': 'ai',
-        'text': 'Hello ${widget.profile.firstName}! I am Panda Eats AI Coach 🐼.\n\nYour target is **~$target kcal/day** (${isCutting ? "Cutting Deficit" : "Bulking Surplus"}).\nHow can I help you optimize your meals today?',
+        'text':
+            'Salut ${widget.profile.firstName}! Sunt antrenorul și nutriționistul tău Panda AI 🐼.\n\nȚinta ta zilnică este de **~$target kcal/zi** (${isCutting ? "Deficit de Slăbire / Cutting" : "Surplus de Masă / Bulking"}).\n\nCu ce începem azi? Îmi poți cere un plan alimentar complet, sfaturi rapide sau **îmi poți trimite direct o poză cu eticheta oricărui produs** din frigider/magazin ca să-ți spun pe loc dacă e bun și cât să cântărești!',
       });
     });
     _saveChatHistory();

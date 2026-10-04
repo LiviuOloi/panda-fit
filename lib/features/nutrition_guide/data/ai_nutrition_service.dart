@@ -165,8 +165,13 @@ Return ONLY a valid JSON array matching this exact schema without markdown wrap:
     final recommendedTarget = isCutting ? maintenance - 450 : maintenance + 300;
 
     final dynamicSystemPrompt = '''
-You are Panda AI — an elite, conversational, and encouraging fitness coach and expert nutritionist for PandaFit.
-You converse naturally, intelligently, and warmly, just like ChatGPT or a top personal trainer!
+You are Panda AI — an energetic, friendly, and expert fitness coach and nutritionist for PandaFit.
+You converse naturally, casually, and intelligently, exactly like ChatGPT with a warm, motivating personal trainer vibe!
+
+CRITICAL LANGUAGE RULE:
+- If the user writes in Romanian (e.g., "salut", "cum esti", "fa-mi un plan", or any Romanian query), you MUST respond completely and fluently in ROMANIAN! Use natural, friendly, informal phrasing ("tu", "hai să facem", "arată super", etc.).
+- If the user writes in English, respond in English.
+- NEVER respond in robotic or formal English when addressed in Romanian.
 
 USER BIOMETRIC PROFILE:
 - Name: ${profile.firstName}
@@ -184,15 +189,15 @@ PANDAFIT CORE INVARIANTS:
 2. Glycemic focus: Low GI carbs (Basmati/Panzani rice, oats, sweet potatoes), high fiber vegetables, lean protein.
 
 HOW TO CONVERSE & ASSIST:
-1. Natural & Fluent Persona: Be friendly, direct, energetic, and supportive. Use natural conversation (Romanian or English based on the user). Never sound like a rigid medical report.
-2. Generating Meal Plans: If the user asks for a meal plan (e.g., "Fa-mi un plan alimentar"), create a full, delicious day of eating (Breakfast, Lunch, Dinner, Snacks) directly in your message with exact raw/dry gram portions, calories, macros, and practical prep steps.
+1. Natural & Casual Persona: Be warm, direct, conversational, and energetic. Never sound like an automated robotic system. Talk like an expert gym buddy & nutritionist who cares.
+2. Generating Meal Plans: If the user asks for a meal plan, layout a complete, mouth-watering daily menu (Breakfast, Lunch, Dinner, Snack) directly in the message with exact raw/dry gram portions, calories, macros, and prep steps.
 3. Checking Nutrition Labels & Products (Vision):
    - When the user sends a photo of a food item or nutrition label:
    - Carefully read its ingredients and nutritional table (Calories, Protein, Carbs, Sugars, Fat, Saturated Fat, Fiber).
-   - Give a clear, straightforward verdict: Is it good/healthy? Is it suitable for their current ${isCutting ? 'cutting' : 'bulking'} target (~$recommendedTarget kcal/day)?
+   - Give a clear, friendly verdict: Is it good/healthy? Is it suitable for their current ${isCutting ? 'cutting' : 'bulking'} target (~$recommendedTarget kcal/day)?
    - Recommend the exact portion (in grams) to eat and how to incorporate it into their daily meal plan!
 4. Multi-turn Memory: Keep track of the full ongoing conversation (if you previously created a plan and the user now sends product photos, validate whether those specific products fit into that meal plan).
-5. Formatting: Use Markdown formatting (bolding, bullet points, clean spacing, emojis 🐼💪🥗🔥) so responses are effortless to read.
+5. Formatting: Use clean Markdown formatting (bolding, bullet points, clean spacing, emojis 🐼💪🥗🔥).
 ''';
 
     if (apiKey.isNotEmpty) {
@@ -252,6 +257,19 @@ HOW TO CONVERSE & ASSIST:
           }
         } catch (e) {
           debugPrint('Gemini chatConsultation tried $modelName error: $e');
+          try {
+            final fallbackTurns = <Content>[
+              Content.text('Instructions & Profile:\n$dynamicSystemPrompt'),
+              ...validTurns,
+            ];
+            final model = GenerativeModel(model: modelName, apiKey: apiKey);
+            final response = await model.generateContent(fallbackTurns);
+            if (response.text != null && response.text!.trim().isNotEmpty) {
+              return response.text!;
+            }
+          } catch (e2) {
+            debugPrint('Gemini fallback chat error on $modelName: $e2');
+          }
         }
       }
     }
@@ -402,7 +420,7 @@ HOW TO CONVERSE & ASSIST:
     UserProfile profile,
     Mission activeMission,
   ) {
-    final lower = userMessage.toLowerCase();
+    final lower = userMessage.toLowerCase().trim();
     final bmr = CalculationEngine.calculateBMR(
       weightKg: profile.profileStartWeight,
       heightCm: profile.heightCm,
@@ -418,55 +436,118 @@ HOW TO CONVERSE & ASSIST:
     final isCutting = activeMission.missionType == MissionType.cutting;
     final recommendedTarget = isCutting ? maintenance - 450 : maintenance + 300;
 
-    if (lower.contains('salut') || lower.contains('buna') || lower.contains('hello') || lower.contains('hi') || lower.contains('hey') || lower.startsWith('servus')) {
-      return 'Hello ${profile.firstName}! 👋 How are you feeling today? I am here to help you with meal ideas, macronutrient balancing, or any fitness questions for your ${isCutting ? 'cutting' : 'bulking'} mission (~$recommendedTarget kcal/day). What is on your mind?';
+    // Detect Romanian (or default to Romanian if not strictly English text)
+    final isExplicitEnglish = RegExp(r'\b(the|is|are|you|how|what|my|can|diet|meal|please|want|thanks|good|morning|evening)\b', caseSensitive: false).hasMatch(lower);
+    final isRo = !isExplicitEnglish || RegExp(r'\b(salut|buna|bună|cf|ce faci|cum|esti|ești|vreau|fa|fă|retet|rețet|plan|mancare|mâncare|ce|ai|am|pot|sa|să|si|și|cine|pranz|prânz|mic|dejun|gustar|gustare|eticheta|etichet|poza|poză|somon|pui|orez|cartofi|oua|ouă|da|nu|multumesc|mersi|bine|super|grasimi|proteine|carbohidrati|slabit|masa|slabire)\b', caseSensitive: false).hasMatch(lower);
+
+    // 1. "cum esti" / "ce faci"
+    if (lower.contains('cum esti') || lower.contains('cum ești') || lower.contains('ce faci') || lower.contains('how are you') || lower.contains('how r u')) {
+      if (isRo) {
+        return 'Sunt super bine și plin de energie, ${profile.firstName}! 🐼💪\n\nTu cum te simți azi? Ai apucat să mănânci ceva sau vrei să punem la punct meniul pe ziua de azi? Dacă ai cumpărat produse noi, trimite-mi o poză cu eticheta și le integrăm imediat!';
+      } else {
+        return 'I am feeling great and energized, ${profile.firstName}! 🐼💪\n\nHow are you feeling today? Have you eaten yet or shall we map out your meals for today? If you have new groceries, snap a photo of the nutrition label and we will fit it in!';
+      }
     }
 
-    if (lower.contains('menten') || lower.contains('tdee') || lower.contains('bmr') || lower.contains('calor')) {
-      return '''
-📊 **PandaFit Metabolic Breakdown:**
-• **BMR (Basal Rest):** ~$bmr kcal/day
-• **Maintenance (TDEE):** ~$maintenance kcal/day
-• **Recommended Target (${activeMission.missionType.name.toUpperCase()}):** ~$recommendedTarget kcal/day ${isCutting ? '(-450 kcal fat loss deficit)' : '(+300 kcal lean bulk surplus)'}.''';
+    // 2. Greetings
+    if (lower.contains('salut') || lower.contains('buna') || lower.contains('bună') || lower.contains('hello') || lower.contains('hi') || lower.contains('hey') || lower.contains('neata') || lower.contains('neața')) {
+      if (isRo) {
+        return 'Salut ${profile.firstName}! 👋 Mă bucur să te aud! Sunt gata să te ajut cu orice ai nevoie pentru obiectivul tău de **${isCutting ? "Cutting" : "Bulking"} (~$recommendedTarget kcal/zi)**.\n\nVrei un plan alimentar complet, o recomandare rapidă de masă sau ai vreo poză cu eticheta unui produs pe care vrei să o verificăm? 📸';
+      } else {
+        return 'Hey ${profile.firstName}! 👋 Great to see you! Ready to help you crush your **${isCutting ? "Cutting" : "Bulking"} goal (~$recommendedTarget kcal/day)**.\n\nWant a full daily meal plan, quick food tips, or got a photo of a food label you want me to inspect? 📸';
+      }
     }
 
+    // 3. Meal Plan Request
+    if (lower.contains('plan') || lower.contains('meniu') || lower.contains('menu') || lower.contains('ce mananc') || lower.contains('ce să mănânc') || lower.contains('diet') || lower.contains('masa') || lower.contains('mâncare')) {
+      if (isRo) {
+        return '''
+🔥 **Uite un Plan Alimentar Complet & Delicios — ${isCutting ? "CUTTING (-450 kcal deficit)" : "BULKING (+300 kcal surplus)"} (~$recommendedTarget kcal/zi):**
+
+🍳 **1. Micul Dejun (~520 kcal | 42g P · 40g C · 18g F):**
+• **3 Ouă întregi** (cântărite crude) omletă cu 5g ulei de măsline măsurat.
+• **100g Brânză Cottage Light 3%** + **200g Legume verzi** (broccoli sau fasole verde).
+• **70g Pâine Graham** sau integrală cu maia.
+
+🍏 **2. Gustare Rapidă (~280 kcal | 22g P · 28g C · 8g F):**
+• **150g Iaurt Grecesc 2%** + **75g Afine** + **10g Semințe chia**.
+
+🍗 **3. Prânz Anabolic (~650 kcal | 55g P · 65g C · 12g F):**
+• **220g Piept de pui** (cântărit **CRUD**).
+• **100g Orez Basmati / Panzani** (cântărit **USCAT/crud**).
+• **250g Legume asortate** trase la tigaie + **80g Murături în saramură**.
+
+🥗 **4. Cină Ușoară (~600 kcal | 50g P · 45g C · 16g F):**
+• **200g Somon sălbatic sau Păstrăv** (cântărit **CRUD**) la cuptor.
+• **200g Cartofi wedges / copți** (cântăriți **CRUD**) + salată mare verde.
+
+---
+📸 **Ce ai prin frigider sau cămară?** Trimite-mi poze cu etichetele produselor tale și îți zic pe loc dacă sunt bune și exact câte grame să pui pe cântar!''';
+      } else {
+        return '''
+🔥 **Full Personalized Daily Meal Plan — ${isCutting ? "CUTTING (-450 kcal deficit)" : "BULKING (+300 kcal surplus)"} (~$recommendedTarget kcal/day):**
+
+🍳 **1. High-Protein Breakfast (~520 kcal | 42g P · 40g C · 18g F):**
+• **3 Whole eggs** (raw) cooked in 5g measured olive oil.
+• **100g Cottage Cheese Light 3%** + **200g Green veggies** (broccoli/beans).
+• **70g Graham or whole wheat toast**.
+
+🍏 **2. Metabolic Snack (~280 kcal | 22g P · 28g C · 8g F):**
+• **150g Greek Yogurt 2%** + **75g Blueberries** + **10g Chia seeds**.
+
+🍗 **3. Power Lunch (~650 kcal | 55g P · 65g C · 12g F):**
+• **220g Chicken Breast** (weighed **RAW**).
+• **100g Basmati Rice** (weighed **DRY/uncooked**).
+• **250g Mixed veggies** + **80g Pickles in brine**.
+
+🥗 **4. Clean Dinner (~600 kcal | 50g P · 45g C · 16g F):**
+• **200g Wild Salmon or Trout** (weighed **RAW**) oven-baked.
+• **200g Raw-weighed potato wedges** + large leafy green salad.
+
+---
+📸 **Got food items at home?** Take photos of their nutrition facts labels and I will tell you if they fit and exact gram portions!''';
+      }
+    }
+
+    // 4. Protein questions
     if (lower.contains('proteina') || lower.contains('protein') || lower.contains('gram')) {
       final proteinTarget = (profile.profileStartWeight * 2.0).round();
-      return '''
-🥩 **Optimal Protein Guideline:**
-• For your profile (${profile.profileStartWeight} kg, ${isCutting ? 'Cutting' : 'Bulking'}), aim for **~$proteinTarget g protein/day** (~2.0g per kg of body weight).
-• Great clean sources: Raw weighed chicken breast (23g P / 100g), wild salmon (20g P / 100g), whole eggs (6g P / egg), 2% Greek yogurt (10g P / 100g), and light cottage cheese.''';
+      if (isRo) {
+        return '''
+🥩 **Necesarul tău optim de proteine:**
+• Pentru greutatea ta de **${profile.profileStartWeight} kg**, ținta ideală este de **~$proteinTarget g proteine/zi** (~2.0g per kg corp).
+• **Surse de top:** Piept de pui crud (23g P/100g), somon sălbatic (20g P/100g), ouă întregi (6g P/buc), iaurt grecesc 2% (10g P/100g), brânză cottage light (12g P/100g).''';
+      } else {
+        return '''
+🥩 **Optimal Daily Protein Target:**
+• For your profile (${profile.profileStartWeight} kg), aim for **~$proteinTarget g protein/day** (~2.0g per kg bodyweight).
+• **Top sources:** Raw chicken breast (23g P/100g), wild salmon (20g P/100g), whole eggs (6g P/egg), 2% Greek yogurt (10g P/100g), light cottage cheese (12g P/100g).''';
+      }
     }
 
-    if (lower.contains('dairy') || lower.contains('lactate') || lower.contains('lactoza') || lower.contains('lactose')) {
-      return '🚫 **Dairy-Free / Lactose-Free Protocol:** I have excluded all dairy items. Your healthy fats and clean protein are sourced from whole eggs, wild salmon, lean meats, and avocado. Check out your tailored recipes below!';
+    // 5. BMR / TDEE
+    if (lower.contains('menten') || lower.contains('tdee') || lower.contains('bmr') || lower.contains('calor')) {
+      if (isRo) {
+        return '''
+📊 **Profilul tău metabolic PandaFit:**
+• **BMR (Consum bazal în repaus):** ~$bmr kcal/zi
+• **TDEE (Mentenanță zilnică):** ~$maintenance kcal/zi
+• **Target recomandat (${isCutting ? "Cutting" : "Bulking"}):** **~$recommendedTarget kcal/zi** (${isCutting ? "-450 kcal deficit pentru ardere grăsimi" : "+300 kcal surplus pentru masă musculară"}).''';
+      } else {
+        return '''
+📊 **PandaFit Metabolic Profile:**
+• **BMR (Basal Rest):** ~$bmr kcal/day
+• **Maintenance (TDEE):** ~$maintenance kcal/day
+• **Recommended Target (${isCutting ? "Cutting" : "Bulking"}):** **~$recommendedTarget kcal/day** (${isCutting ? "-450 kcal fat loss deficit" : "+300 kcal lean bulk surplus"}).''';
+      }
     }
 
-    if (lower.contains('peste') || lower.contains('fish') || lower.contains('somon') || lower.contains('salmon')) {
-      return '🐟 **High-Fish & Salmon Protocol:** I have crafted meals rich in essential Omega-3 EPA/DHA fatty acids and lean protein using wild salmon and white fish. Check out your proposed meals below!';
+    // 6. Default friendly chat
+    if (isRo) {
+      return 'Sunt aici alături de tine, ${profile.firstName}! 💪 Spune-mi ce vrei să facem: vrei să stabilim un plan alimentar, sfaturi de macronutrienți sau ai o etichetă de produs pe care vrei să o verificăm împreună?';
     }
 
-    if (lower.contains('cutting') || lower.contains('slabire') || lower.contains('deficit') || lower.contains('fat loss')) {
-      return '🔥 **Cutting Plan Activated:** Your target is ~$recommendedTarget kcal/day (-450 kcal deficit). I have generated high-volume, fiber-rich meals with lean protein to maximize fullness and energy.';
-    }
-
-    if (lower.contains('bulking') || lower.contains('masa') || lower.contains('muscle') || lower.contains('surplus')) {
-      return '🦁 **Lean Bulking Plan Activated:** Your target is ~$recommendedTarget kcal/day (+300 kcal controlled surplus) for clean muscular hypertrophy with minimal fat storage.';
-    }
-
-    if (lower.contains('quick') || lower.contains('15-min') || lower.contains('rapid') || lower.contains('fast')) {
-      return '⚡ **Quick 15-Minute Meals:** High-speed recipes optimized for rapid prep, while strictly preserving raw-weighed precision and low-glycemic fiber volume!';
-    }
-
-    if (lower.contains('inlocui') || lower.contains('schimb') || lower.contains('replace') || lower.contains('substitut')) {
-      return '''
-🔄 **PandaFit Macro Equivalence Rules:**
-• **100g Dry Rice (~350 kcal, 75g Carbs):** = ~350g Raw Sweet Potatoes = ~80g Dry Rolled Oats = ~130g Graham / Whole Wheat Bread.
-• **200g Raw Chicken Breast (~220 kcal, 46g Protein):** = ~220g Fresh Salmon Fillet = ~200g Lean Beef Sirloin = ~230g Trout.
-*All measurements must strictly adhere to raw/dry state protocol!*''';
-    }
-
-    return 'I am here with you, ${profile.firstName}! Whether you need nutrition coaching, meal suggestions, macro calculations, or motivation for your ${isCutting ? 'cutting' : 'bulking'} mission (~$recommendedTarget kcal/day), just let me know what you need!';
+    return 'I am right here with you, ${profile.firstName}! 💪 Let me know what you want to work on: need a personalized meal plan, macro breakdown, or got a food label you want me to inspect for you?';
   }
 }
 
