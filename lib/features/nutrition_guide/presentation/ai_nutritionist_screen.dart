@@ -15,7 +15,7 @@ final recipesRepositoryProvider = Provider<RecipesRepository>((ref) {
   return RecipesRepository();
 });
 
-final allRecipesProvider = FutureProvider.autoDispose<List<MealRecipe>>((ref) async {
+final allRecipesProvider = FutureProvider<List<MealRecipe>>((ref) async {
   final user = ref.watch(currentUserProvider);
   final repo = ref.watch(recipesRepositoryProvider);
   return await repo.fetchAllRecipes(user?.id);

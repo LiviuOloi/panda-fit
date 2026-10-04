@@ -191,7 +191,8 @@ class _DailyLoggerScreenState extends ConsumerState<DailyLoggerScreen> {
       );
 
       final repo = ref.read(dailyEntryRepositoryProvider);
-      await repo.saveDailyEntry(entry);
+      final existingEntries = ref.read(dailyEntriesProvider).value;
+      await repo.saveDailyEntry(entry, existingEntries: existingEntries);
 
       // Invalidate to refresh Dashboard, Missions & Charts
       ref.invalidate(dailyEntriesProvider);
@@ -226,9 +227,13 @@ class _DailyLoggerScreenState extends ConsumerState<DailyLoggerScreen> {
   @override
   Widget build(BuildContext context) {
     // Listen to profile and entries to prefill when loaded
-    ref.listen(userProfileProvider, (_, __) => _prefillDataIfNeeded());
-    ref.listen(dailyEntriesProvider, (_, __) => _prefillDataIfNeeded());
-    _prefillDataIfNeeded();
+    ref.listen(userProfileProvider, (_, __) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _prefillDataIfNeeded());
+    });
+    ref.listen(dailyEntriesProvider, (_, __) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _prefillDataIfNeeded());
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) => _prefillDataIfNeeded());
 
     final profile = ref.watch(userProfileProvider).value;
     final activeMission = ref.watch(activeMissionProvider).value;

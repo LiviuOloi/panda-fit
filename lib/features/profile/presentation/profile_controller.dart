@@ -20,21 +20,21 @@ final dailyEntryRepositoryProvider = Provider<DailyEntryRepository>((ref) {
   return DailyEntryRepository(SupabaseService.client);
 });
 
-final userProfileProvider = FutureProvider.autoDispose<UserProfile?>((ref) async {
+final userProfileProvider = FutureProvider<UserProfile?>((ref) async {
   final user = ref.watch(currentUserProvider);
   if (user == null) return null;
   final repo = ref.watch(profileRepositoryProvider);
   return await repo.fetchProfile(user.id);
 });
 
-final activeMissionProvider = FutureProvider.autoDispose<Mission?>((ref) async {
+final activeMissionProvider = FutureProvider<Mission?>((ref) async {
   final user = ref.watch(currentUserProvider);
   if (user == null) return null;
   final repo = ref.watch(missionsRepositoryProvider);
   return await repo.fetchActiveMission(user.id);
 });
 
-final dailyEntriesProvider = FutureProvider.autoDispose<List<DailyEntry>>((ref) async {
+final dailyEntriesProvider = FutureProvider<List<DailyEntry>>((ref) async {
   final user = ref.watch(currentUserProvider);
   if (user == null) return [];
   final repo = ref.watch(dailyEntryRepositoryProvider);
