@@ -48,7 +48,6 @@ class _AiNutritionistScreenState extends ConsumerState<AiNutritionistScreen> {
 
   bool _isLoading = false;
   final List<Map<String, dynamic>> _messages = [];
-  final List<MealRecipe> _generatedRecipes = [];
 
   @override
   void initState() {
@@ -60,24 +59,27 @@ class _AiNutritionistScreenState extends ConsumerState<AiNutritionistScreen> {
     try {
       final prefs = await SharedPreferences.getInstance();
       final rawMsgs = prefs.getString(_chatStorageKey);
-      final rawRecipes = prefs.getString(_recipesStorageKey);
-
-      if (rawRecipes != null) {
-        final decodedRecipes = json.decode(rawRecipes) as List<dynamic>;
-        setState(() {
-          _generatedRecipes.clear();
-          _generatedRecipes.addAll(
-            decodedRecipes.map((r) => MealRecipe.fromJson(r as Map<String, dynamic>)),
-          );
-        });
-      }
+      final legacyRawRecipes = prefs.getString(_recipesStorageKey);
 
       if (rawMsgs != null) {
         final list = json.decode(rawMsgs) as List<dynamic>;
         if (list.isNotEmpty) {
+          final loadedMessages = list.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+          
+          // Migrate legacy unattached recipes if any
+          if (legacyRawRecipes != null && loadedMessages.isNotEmpty) {
+            final decodedLegacy = json.decode(legacyRawRecipes) as List<dynamic>;
+            if (decodedLegacy.isNotEmpty) {
+              final lastAiIndex = loadedMessages.lastIndexWhere((m) => m['role'] == 'ai');
+              if (lastAiIndex != -1 && loadedMessages[lastAiIndex]['recipes'] == null) {
+                loadedMessages[lastAiIndex]['recipes'] = decodedLegacy;
+              }
+            }
+          }
+
           setState(() {
             _messages.clear();
-            _messages.addAll(list.map((e) => Map<String, dynamic>.from(e as Map)));
+            _messages.addAll(loadedMessages);
           });
           return;
         }
@@ -99,7 +101,6 @@ class _AiNutritionistScreenState extends ConsumerState<AiNutritionistScreen> {
 
     setState(() {
       _messages.clear();
-      _generatedRecipes.clear();
       _messages.add({
         'role': 'ai',
         'text': 'Hello ${widget.profile.firstName}! I am Panda Eats AI Coach 🐼.\n\nYour target is **~$target kcal/day** (${isCutting ? "Cutting Deficit" : "Bulking Surplus"}).\nHow can I help you optimize your meals today?',
@@ -112,10 +113,6 @@ class _AiNutritionistScreenState extends ConsumerState<AiNutritionistScreen> {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_chatStorageKey, json.encode(_messages));
-      await prefs.setString(
-        _recipesStorageKey,
-        json.encode(_generatedRecipes.map((r) => r.toJson()).toList()),
-      );
     } catch (_) {}
   }
 
@@ -163,6 +160,7 @@ class _AiNutritionistScreenState extends ConsumerState<AiNutritionistScreen> {
     );
 
     // 2. Generate structured meal proposals if requesting plan
+    List<MealRecipe> generatedForThisMessage = [];
     if (text.toLowerCase().contains('plan') ||
         text.toLowerCase().contains('menu') ||
         text.toLowerCase().contains('meal') ||
@@ -170,20 +168,23 @@ class _AiNutritionistScreenState extends ConsumerState<AiNutritionistScreen> {
         text.toLowerCase().contains('cutting') ||
         text.toLowerCase().contains('bulking') ||
         presetText != null) {
-      final recipes = await _aiService.generateCustomMealPlan(
+      generatedForThisMessage = await _aiService.generateCustomMealPlan(
         profile: widget.profile,
         activeMission: widget.activeMission,
         userPreferences: text,
         customApiKey: customApiKey,
       );
-      _generatedRecipes.clear();
-      _generatedRecipes.addAll(recipes);
     }
 
     if (!mounted) return;
 
     setState(() {
-      _messages.add({'role': 'ai', 'text': reply});
+      _messages.add({
+        'role': 'ai',
+        'text': reply,
+        if (generatedForThisMessage.isNotEmpty)
+          'recipes': generatedForThisMessage.map((r) => r.toJson()).toList(),
+      });
       _isLoading = false;
     });
 
@@ -296,35 +297,46 @@ class _AiNutritionistScreenState extends ConsumerState<AiNutritionistScreen> {
               child: ListView.builder(
                 controller: _scrollController,
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                itemCount: _messages.length + (_generatedRecipes.isNotEmpty ? 1 : 0),
+                itemCount: _messages.length,
                 itemBuilder: (context, index) {
-                  if (index == _messages.length && _generatedRecipes.isNotEmpty) {
-                    return _buildGeneratedRecipesSection();
-                  }
-
                   final msg = _messages[index];
                   final isUser = msg['role'] == 'user';
+                  final rawRecipes = msg['recipes'] as List<dynamic>?;
+                  final recipes = (rawRecipes != null && rawRecipes.isNotEmpty)
+                      ? rawRecipes
+                          .map((r) => MealRecipe.fromJson(Map<String, dynamic>.from(r as Map)))
+                          .toList()
+                      : <MealRecipe>[];
 
-                  return Align(
-                    alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-                    child: Container(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.8),
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: isUser ? AppColors.emerald : AppColors.surface,
-                        borderRadius: BorderRadius.circular(14),
-                        border: isUser ? null : Border.all(color: AppColors.glassBorder),
-                      ),
-                      child: Text(
-                        msg['text'] as String,
-                        style: TextStyle(
-                          color: isUser ? Colors.white : AppColors.textPrimary,
-                          fontSize: 14,
-                          height: 1.4,
+                  return Column(
+                    crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                    children: [
+                      Align(
+                        alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+                        child: Container(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.8),
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: isUser ? AppColors.emerald : AppColors.surface,
+                            borderRadius: BorderRadius.circular(14),
+                            border: isUser ? null : Border.all(color: AppColors.glassBorder),
+                          ),
+                          child: Text(
+                            msg['text'] as String,
+                            style: TextStyle(
+                              color: isUser ? Colors.white : AppColors.textPrimary,
+                              fontSize: 14,
+                              height: 1.4,
+                            ),
+                          ),
                         ),
                       ),
-                    ),
+                      if (recipes.isNotEmpty) ...[
+                        _buildMessageRecipesSection(recipes),
+                        const SizedBox(height: 12),
+                      ],
+                    ],
                   );
                 },
               ),
@@ -407,12 +419,12 @@ class _AiNutritionistScreenState extends ConsumerState<AiNutritionistScreen> {
     );
   }
 
-  Widget _buildGeneratedRecipesSection() {
+  Widget _buildMessageRecipesSection(List<MealRecipe> recipes) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Padding(
-          padding: EdgeInsets.symmetric(vertical: 12.0),
+          padding: EdgeInsets.symmetric(vertical: 8.0),
           child: Row(
             children: [
               Icon(Icons.restaurant_menu, color: AppColors.emeraldLight, size: 18),
@@ -424,7 +436,7 @@ class _AiNutritionistScreenState extends ConsumerState<AiNutritionistScreen> {
             ],
           ),
         ),
-        ..._generatedRecipes.map((r) => _buildRecipeProposalCard(r)),
+        ...recipes.map((r) => _buildRecipeProposalCard(r)),
       ],
     );
   }
