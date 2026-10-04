@@ -202,7 +202,7 @@ class MissionsScreen extends ConsumerWidget {
 
               // Configure New Mission Button
               PandaButton(
-                label: isAccomplished ? '🎉 Configure Next Mission' : 'Configure Next Mission',
+                label: 'Configure Next Mission',
                 icon: isAccomplished ? Icons.rocket_launch : Icons.flag_outlined,
                 variant: isAccomplished ? PandaButtonVariant.primary : PandaButtonVariant.secondary,
                 width: double.infinity,

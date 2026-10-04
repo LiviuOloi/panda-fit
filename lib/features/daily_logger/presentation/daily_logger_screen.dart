@@ -387,7 +387,7 @@ class _DailyLoggerScreenState extends ConsumerState<DailyLoggerScreen> {
                                     const SizedBox(height: 12),
                                     if (profile != null && activeMission != null)
                                       PandaButton(
-                                        label: '🤖 Generate Meals with Panda AI',
+                                        label: 'Generate Meals with Panda AI',
                                         icon: Icons.auto_awesome,
                                         variant: PandaButtonVariant.secondary,
                                         onPressed: () {

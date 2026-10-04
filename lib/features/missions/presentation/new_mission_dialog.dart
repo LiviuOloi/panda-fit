@@ -327,7 +327,7 @@ class _NewMissionDialogState extends ConsumerState<NewMissionDialog> {
 
             // Submit Button
             PandaButton(
-              label: '🚀 Launch Next Mission',
+              label: 'Launch Next Mission',
               icon: Icons.rocket_launch,
               width: double.infinity,
               isLoading: _isLoading,
