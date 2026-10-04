@@ -69,7 +69,6 @@ migrate_working_dir/
 **/ios/Runner/GeneratedPluginRegistrant.m
 
 # Web related
-lib/generated_plugin_registrant.dart
 
 # Symbol processing related
 symbols/
