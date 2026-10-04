@@ -287,7 +287,7 @@ class _NewMissionDialogState extends ConsumerState<NewMissionDialog> {
               ],
               decoration: const InputDecoration(
                 suffixText: 'kg',
-                prefixIcon: Icon(Icons.fitness_center, color: AppColors.cyan, size: 18),
+                prefixIcon: Icon(Icons.scale, color: AppColors.cyan, size: 20),
               ),
             ),
             const SizedBox(height: 16),
@@ -308,9 +308,9 @@ class _NewMissionDialogState extends ConsumerState<NewMissionDialog> {
               decoration: InputDecoration(
                 suffixText: 'kg',
                 prefixIcon: Icon(
-                  _selectedType == MissionType.cutting ? Icons.arrow_downward : Icons.arrow_upward,
+                  _selectedType == MissionType.cutting ? Icons.trending_down : Icons.trending_up,
                   color: _selectedType == MissionType.cutting ? AppColors.emerald : AppColors.cyan,
-                  size: 18,
+                  size: 20,
                 ),
               ),
             ),
