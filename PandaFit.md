@@ -20,14 +20,15 @@ Aplicația combină rigoarea analitică (medie mobilă pe 7 zile, calcul precis 
 
 ---
 
-## 3. Tech Stack & Architecture
+## 3. Tech Stack & Architecture (100% Free & Open Source)
 
-* **Frontend Framework:** Next.js (App Router) cu React & TypeScript.
-* **Styling & Design System:** Tailwind CSS + componente personalizate, design modern Dark Mode / Glassmorphism, paletă de culori atent curatoriată (Emerald / Cyan / Slate / Amber).
-* **Charts & Data Visualization:** Recharts sau Chart.js (Grafic greutate zilnică vs. Medie mobilă 7 zile vs. Target Mission).
-* **Database & ORM:** PostgreSQL (Serverless via Neon / Supabase) sau SQLite local, gestionat prin **Prisma ORM**.
-* **State Management & Validation:** React Hook Form + Zod (validare strictă pentru toate tipurile de date și cazurile de frontieră).
-* **Icons & UI Extras:** Lucide Icons, Framer Motion pentru micro-interacțiuni fluide.
+* **Framework:** Flutter 3.32+ (Dart 3.8+) multi-platform (Web, Android, iOS).
+* **Backend & Cloud DB:** Supabase (PostgreSQL 15+, Auth, Realtime WebSocket, PostgREST API cu Row Level Security RLS).
+* **State Management:** Flutter Riverpod (`flutter_riverpod`).
+* **Data Visualization:** `fl_chart` (Grafic interactiv greutate zilnică vs. Medie mobilă 7 zile vs. Target Mission).
+* **AI Engine:** Google Generative AI (`google_generative_ai` / Gemini 1.5 & 2.0 Flash) cu cascadă de fallback automată și motor offline determinist.
+* **Styling & Design System:** Material 3 Dark Theme personalizat + Glassmorphism, paletă curatoriată (Emerald / Cyan / Slate / Amber / Rose).
+* **Icons & UI Extras:** Material Symbols / Lucide Icons, carduri glassmorphic cu micro-animații fluide.
 
 ---
 
@@ -165,27 +166,22 @@ model MealRecipe {
 
 2. **Daily Logger (Quick Modal / Inline Card):**
    * Input rapid pentru greutatea de dimineață.
-   * Toggle Înot (Da/Nu) & Plan Respectat (Da/Nu).
+   * Selector dinamic pentru cină bazat pe meniul personal (Rețete predefinite A/B/C + Rețete personalizate).
+   * Calculator pesimist de calorii pentru activități fizice (înot, sală cu MET ponderat, cardio).
    * Input Calorii (Ingerate, Consumate) cu calcul automat al caloriilor nete.
-   * Selector rapid pentru tipul de cină (Opțiunea A / B / C sau Custom).
 
-3. **Meal & Nutrition Guide:**
-   * Fișe interactive pentru Mic Dejun, Gustări și Cine (A, B, C) cu gramaje exacte, mod de preparare și reguli (crud/uscat, legume congelate, ulei cântărit).
+3. **Panda Eats AI Coach & Personal Recipe Manager:**
+   * **Chat Interactiv AI:** Consultanță nutrițională personalizată în funcție de BMR, TDEE și target caloric.
+   * **Generare Meniuri Tailored:** Sugestii de mese cu ingrediente cântărite crud/uscat și respectarea încărcăturii glicemice.
+   * **Carduri Inline Persistente:** Meniurile generate sunt atașate fiecărui răspuns și salvate persistent în istoricul conversației.
+   * **Salvare Rețete în Meniu Personal:** Buton instant de adăugare în meniul propriu pentru selecție rapidă în Daily Logger.
+   * **Dialog Configurare Gemini API Key:** Ghid în 3 pași cu salvare securizată pe dispozitiv.
 
 4. **Missions Hub:**
    * Misiunea Activă cu indicator de status strict ($< \text{Target}$ pentru Cutting, $> \text{Target}$ pentru Bulking).
+   * Sărbătorire cu confeti la atingerea țintei.
    * Secțiunea **"Missions Accomplished"** cu istoricul tuturor obiectivelor atinse cu succes.
 
 5. **Profile & Settings:**
    * Date personale, calcul automat vârstă, blocare automată a greutății de start după prima intrare.
-   * Export / Import date (inclusiv sincronizare/import CSV direct din formatul Google Sheets).
-
----
-
-## 7. Next Implementation Steps
-
-1. **Pasul 1 — Inițializare Proiect:** Setup Next.js + TypeScript + Tailwind CSS + Lucide Icons.
-2. **Pasul 2 — Model de date & API:** Configurare Prisma Schema & State/Storage local cu datele reale din Google Sheet (102.6 kg start, intrările din 30.09.2026 - 03.10.2026).
-3. **Pasul 3 — Interfață Dashboard & Grafice:** Construire UI complet cu mod Dark, carduri de statistici, grafic 7-day moving average.
-4. **Pasul 4 — Daily Entry Form & Validări:** Formular complet de logare cu reguli stricte de business.
-5. **Pasul 5 — Modul Misiuni & Ghid Alimentar:** Integrarea secțiunii de misiuni (Cutting/Bulking) și a meniurilor interactive.
+   * Informații analitice: BMR (Basal Metabolic Rate), TDEE (Mentenanță) și Target Caloric recomandat.

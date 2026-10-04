@@ -29,11 +29,11 @@ Runs seamlessly on **Web**, **Android**, and **iOS** from a single Flutter & Dar
 
 ## 🤖 Features Highlight
 
-- **📊 7-Day Rolling Moving Average:** Filters water weight fluctuations and visualizes real biological progress.
-- **🎯 Cutting & Bulking Missions:** Strict inequality completion milestones with instant celebration.
-- **🤖 Panda Coach AI Nutritionist:** Interactive conversational AI powered by Gemini that dynamically crafts custom meals tailored to your biometric profile (height, weight, age, caloric targets, glycemic focus), with instant one-click save to your personal menu.
-- **🥗 Custom Meal & Recipe Management:** Add, edit, and organize personal breakfast, snack, and dinner recipes with accurate raw/dry weighing tags.
-- **⚡ Fast Daily Logger:** Morning weigh-in, dynamic dinner selection from your personalized menu, activity logging (swimming), and calorie balancing.
+- **📊 7-Day Rolling Moving Average:** Filters water weight fluctuations and visualizes real biological progress with interactive `fl_chart` curves.
+- **🎯 Cutting & Bulking Missions:** Strict mathematical inequality completion milestones (`< target` for cutting, `> target` for bulking) with instant celebration confetti and archival.
+- **🐼 Panda Eats AI Coach:** Interactive conversational AI powered by Google Gemini (with smart multi-model fallback and secure on-device API key setup) that crafts personalized, raw/dry weighed meals matching your glycemic profile and caloric targets, with inline meal card persistence and one-click saving to your personal menu.
+- **🥗 Custom Recipe & Personal Menu Manager:** Create, edit, and organize custom breakfast, snack, and dinner recipes with accurate raw/dry weighing tags and automatic macro calculations.
+- **⚡ Fast Daily Logger & Pessimistic Calorie Engine:** Morning weigh-in, dynamic dinner selection from your personalized menu, swimming & workout logging with science-backed pessimistic MET calorie burn discounting.
 
 ---
 
@@ -49,11 +49,12 @@ Create a `.env` file in the root directory:
 ```env
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_ANON_KEY=your-anon-key
-GEMINI_API_KEY=your-gemini-api-key # Optional: Panda Coach AI works with offline fallback if omitted
+GEMINI_API_KEY=your-gemini-api-key # Optional: Can also be configured directly in the app UI via the key button
 ```
 
 ### 3. Run the App
 - **Web:** `flutter run -d chrome`
+- **Android:** `flutter run -d android`
 - **Unit Tests:** `flutter test`
 - **Static Analysis:** `flutter analyze`
 

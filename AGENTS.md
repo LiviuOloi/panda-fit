@@ -54,6 +54,7 @@ Every AI agent working on PandaFit assumes the role of:
 | **Data Visualization** | **`fl_chart`** | High-performance interactive vector charts for 7-day moving average, daily weights, and mission target thresholds. |
 | **Local Storage / Cache** | `shared_preferences` / `hive` | Fast local caching of credentials, active preferences, and offline pending entries. |
 | **Design System** | **Material 3 Custom Dark Theme** | Emerald (`#10B981`), Cyan (`#06B6D4`), Slate (`#0F172A`, `#1E293B`), Amber (`#F59E0B`). Glassmorphism cards, micro-animations. |
+| **AI Engine** | **Google Generative AI (`google_generative_ai` / Gemini 1.5/2.0)** | Live generative nutrition coach with multi-model fallback cascade, biometric prompt injection, on-device API key persistence, and deterministic offline fallback. |
 | **Icons & Media** | `flutter_lucide` / Material Symbols | Consistent, minimalist iconography for health, weight, swimming, and meals. |
 
 ---
@@ -123,6 +124,20 @@ The user works toward structured **Missions**:
   - Swimming flag (`swimming: bool`)
   - Nutrition adherence flag (`plan_followed: bool`)
   - Notes for exercise sets, gym logs, or deviations.
+
+### 4.5 Panda Eats AI Coach & Dynamic Meal Generation
+* **Live Gemini API Integration:**
+  - Dynamic user consultation using Google Gemini (`google_generative_ai`).
+  - Automatic model fallback cascade: `gemini-1.5-flash-latest` $\rightarrow$ `gemini-1.5-flash` $\rightarrow$ `gemini-2.0-flash` $\rightarrow$ `gemini-pro` $\rightarrow$ Offline Rule-Based Engine.
+  - Multi-turn conversation protocol: History turns must strictly begin with `role: 'user'`, never `role: 'model'`.
+  - Proposed meal proposals are attached inline per AI message turn, preserving all historical recipe sets across turns.
+  - User API key is configured seamlessly via `GeminiApiKeyDialog` with 3-step guide and persisted locally via `gemini_api_key_provider.dart`.
+
+### 4.6 Physical Activity & Pessimistic Calorie Burn Engine
+* **Pessimistic MET Formulas:**
+  - Standard fitness trackers heavily overestimate active calories burned. PandaFit uses evidence-based conservative MET values with strict discounting for resistance training (resting set intervals) to prevent accidental caloric surplus.
+  - Swimming: Calorie burn computed dynamically based on body weight and duration.
+  - Exercise toggles: Supports both duration-based MET calculation and direct custom calorie override.
 
 ---
 

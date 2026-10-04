@@ -136,7 +136,7 @@ graph LR
 | `/dashboard` | `DashboardScreen` | Daily weight overview, 7-day MA chart, active mission status. |
 | `/logger` | `DailyLoggerScreen` | Quick weigh-in, calories, dinner choice, swimming flag. |
 | `/missions` | `MissionsHubScreen` | Active mission tracker, target distance, historical accomplished missions. |
-| `/nutrition` | `NutritionGuideScreen` | Recipe cards, raw/dry weighing protocol, ingredients breakdown. |
+| `/nutrition` | `AiNutritionistScreen` / `NutritionGuideScreen` | **Panda Eats AI Coach**: Gemini dynamic meal generation with multi-model fallback, inline meal card persistence, custom recipe manager (`CustomRecipeDialog`), and API key setup (`GeminiApiKeyDialog`). |
 | `/profile` | `ProfileScreen` | User statistics, height, age, read-only starting weight inspector. |
 
 ---
@@ -196,18 +196,23 @@ graph LR
     subgraph Data Pipeline
         DB[(Supabase DB)] -->|Stream / Watch| Repo[DailyEntriesRepository]
         Repo -->|AsyncValue| Provider[dailyEntriesProvider]
+        RecipesRepo[RecipesRepository] -->|AsyncValue| AllRecipes[allRecipesProvider]
+        DeviceStorage[SharedPreferences] --> KeyProvider[geminiApiKeyProvider]
     end
 
     subgraph Derived State Pipeline
         Provider --> MAEngine[rolling7DayMovingAverageProvider]
         Provider --> DeltaEngine[totalWeightDeltaProvider]
         Provider --> MissionEngine[activeMissionProgressProvider]
+        Provider --> CalorieEngine[ActivityCaloriesCalculator]
     end
 
     subgraph UI Pipeline
         MAEngine --> ChartWidget[WeightProgressChart]
         DeltaEngine --> MetricCard[MetricSummaryCard]
         MissionEngine --> MissionBar[MissionProgressBar]
+        AllRecipes --> DinnerSelector[DailyLoggerScreen & RecipeCards]
+        KeyProvider --> AICoach[AiNutritionistScreen]
     end
 ```
 
@@ -240,3 +245,29 @@ graph TD
    - **Bulking:** Requires $\text{Target Weight} > \text{Start Weight}$.
    - $\text{Target Weight} == \text{Start Weight}$ is strictly rejected at the validation layer.
 3. **Dynamic Age Derivation:** Derived strictly from `birth_date` and calendar anniversary, never stored as a static integer.
+
+---
+
+## 9. Panda Eats AI Coach Engine Architecture
+
+```mermaid
+graph TD
+    UserQuery["User Prompt or Quick Chip (Cutting, Fish, 15-Min)"] --> GuardrailCheck["Biometric Context Injection (BMR, TDEE, Deficit, Glycemic Rules)"]
+    GuardrailCheck --> FallbackCascade{"Gemini API Call Cascade"}
+    
+    FallbackCascade -->|Try 1| Model1["gemini-1.5-flash-latest"]
+    FallbackCascade -->|Fallback 2| Model2["gemini-1.5-flash"]
+    FallbackCascade -->|Fallback 3| Model3["gemini-2.0-flash"]
+    FallbackCascade -->|Fallback 4| Model4["gemini-pro"]
+    FallbackCascade -->|Offline / No Network| OfflineEngine["Deterministic Rule-Based Nutrition Engine"]
+    
+    Model1 --> ParsedResult["Structured JSON & Text Response"]
+    Model2 --> ParsedResult
+    Model3 --> ParsedResult
+    Model4 --> ParsedResult
+    OfflineEngine --> ParsedResult
+    
+    ParsedResult --> AttachInline["Attach Meal Cards Inline to Current Chat Turn"]
+    AttachInline --> LocalPersistence["Save to SharedPreferences (Chat & Recipes)"]
+    AttachInline --> UI["Render Inline Cards with 'Save to My Menu'"]
+```
