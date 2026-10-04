@@ -6,6 +6,7 @@ import '../../../../core/utils/calculation_engine.dart';
 import '../../../../core/widgets/glass_card.dart';
 import '../../../../core/widgets/panda_button.dart';
 import '../../auth/presentation/auth_controller.dart';
+import '../../nutrition_guide/domain/recipe_model.dart';
 import '../../nutrition_guide/presentation/ai_nutritionist_screen.dart';
 import '../../profile/presentation/profile_controller.dart';
 import '../domain/daily_entry_model.dart';
@@ -21,13 +22,14 @@ class DailyLoggerScreen extends ConsumerStatefulWidget {
 
 class _DailyLoggerScreenState extends ConsumerState<DailyLoggerScreen> {
   final _weightController = TextEditingController();
-  final _caloriesInController = TextEditingController(text: '2300');
+  final _caloriesInController = TextEditingController(text: '0');
   final _caloriesOutController = TextEditingController(text: '0');
   final _notesController = TextEditingController();
 
+  final Set<String> _consumedMealIds = {};
   bool _swimming = false;
   bool _planFollowed = true;
-  String _selectedDinner = 'CUSTOM';
+  String _selectedDinner = 'NONE';
   bool _isInitialized = false;
   bool _isSaving = false;
 
@@ -56,9 +58,37 @@ class _DailyLoggerScreenState extends ConsumerState<DailyLoggerScreen> {
     } else if (profile != null) {
       // First time logging: prefill with account starting weight
       _weightController.text = profile.profileStartWeight.toStringAsFixed(1);
-      _caloriesInController.text = profile.dailyTargetCalories.toString();
       _isInitialized = true;
     }
+  }
+
+  void _toggleMealConsumption(MealRecipe recipe, List<MealRecipe> allRecipes) {
+    final recipeKey = recipe.id.isNotEmpty ? recipe.id : (recipe.code ?? recipe.title);
+
+    setState(() {
+      if (_consumedMealIds.contains(recipeKey)) {
+        _consumedMealIds.remove(recipeKey);
+      } else {
+        _consumedMealIds.add(recipeKey);
+      }
+
+      // Automatically sum calories of all checked meals
+      int totalCalories = 0;
+      String lastDinner = 'NONE';
+
+      for (final r in allRecipes) {
+        final key = r.id.isNotEmpty ? r.id : (r.code ?? r.title);
+        if (_consumedMealIds.contains(key)) {
+          totalCalories += r.calories;
+          if (r.category == 'DINNER' || r.category == 'CUSTOM') {
+            lastDinner = r.title;
+          }
+        }
+      }
+
+      _caloriesInController.text = totalCalories.toString();
+      _selectedDinner = lastDinner;
+    });
   }
 
   Future<void> _saveEntry() async {
@@ -77,7 +107,7 @@ class _DailyLoggerScreenState extends ConsumerState<DailyLoggerScreen> {
     }
 
     final roundedWeight = CalculationEngine.roundWeight(rawWeight);
-    final calIn = int.tryParse(_caloriesInController.text) ?? 2300;
+    final calIn = int.tryParse(_caloriesInController.text) ?? 0;
     final calOut = int.tryParse(_caloriesOutController.text) ?? 0;
     final netCal = CalculationEngine.calculateNetCalories(caloriesIn: calIn, caloriesOut: calOut);
 
@@ -115,7 +145,7 @@ class _DailyLoggerScreenState extends ConsumerState<DailyLoggerScreen> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Cântărirea de ${roundedWeight.toStringAsFixed(1)} kg a fost salvată cu succes!'),
+          content: Text('Cântărirea de ${roundedWeight.toStringAsFixed(1)} kg și $calIn kcal au fost salvate!'),
           backgroundColor: AppColors.emerald,
         ),
       );
@@ -142,6 +172,9 @@ class _DailyLoggerScreenState extends ConsumerState<DailyLoggerScreen> {
     ref.listen(userProfileProvider, (_, __) => _prefillDataIfNeeded());
     ref.listen(dailyEntriesProvider, (_, __) => _prefillDataIfNeeded());
     _prefillDataIfNeeded();
+
+    final profile = ref.watch(userProfileProvider).value;
+    final activeMission = ref.watch(activeMissionProvider).value;
 
     return Scaffold(
       body: SafeArea(
@@ -216,48 +249,110 @@ class _DailyLoggerScreenState extends ConsumerState<DailyLoggerScreen> {
               ),
               const SizedBox(height: 16),
 
-              // 2. Predefined & Personal Dinner Selector
+              // 2. Mese Consumate din Planul Personal (Interactive Checklists)
               GlassCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Opțiune Cină / Masă',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    const Text(
-                      'Alege o opțiune din meniul tău personal sau masă custom',
-                      style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Mese Consumate Azi',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                            SizedBox(height: 4),
+                            Text(
+                              'Bifează mesele mâncate pentru calcul automat de calorii',
+                              style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+                            ),
+                          ],
+                        ),
+                        if (profile != null && activeMission != null)
+                          IconButton(
+                            icon: const Icon(Icons.smart_toy_outlined, color: AppColors.emeraldLight),
+                            tooltip: 'Discută cu Panda Coach AI',
+                            onPressed: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute<void>(
+                                  builder: (_) => AiNutritionistScreen(
+                                    profile: profile,
+                                    activeMission: activeMission,
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                      ],
                     ),
                     const SizedBox(height: 16),
                     ref.watch(allRecipesProvider).when(
                           loading: () => const Center(
                             child: Padding(
-                              padding: EdgeInsets.all(8.0),
+                              padding: EdgeInsets.all(12.0),
                               child: CircularProgressIndicator(color: AppColors.emerald),
                             ),
                           ),
-                          error: (_, __) => _buildDinnerChip('CUSTOM', 'Cină Custom / În afara meniului'),
+                          error: (_, __) => const Text(
+                            'Nu am putut încărca meniul.',
+                            style: TextStyle(color: AppColors.rose, fontSize: 13),
+                          ),
                           data: (recipes) {
-                            final dinnerOptions = recipes.where((r) => r.category == 'DINNER' || r.category == 'CUSTOM').toList();
-
-                            return Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              children: [
-                                ...dinnerOptions.map(
-                                  (r) => _buildDinnerChip(
-                                    r.id.isNotEmpty ? r.id : (r.code ?? r.title),
-                                    r.title,
-                                  ),
+                            if (recipes.isEmpty) {
+                              return Container(
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: AppColors.surfaceElevated,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: AppColors.glassBorder),
                                 ),
-                                _buildDinnerChip('CUSTOM', 'Cină Custom (În afara meniului)'),
-                              ],
+                                child: Column(
+                                  children: [
+                                    const Text(
+                                      'Nu ai încă rețete salvate în meniul tău personal.',
+                                      style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                    const SizedBox(height: 12),
+                                    if (profile != null && activeMission != null)
+                                      PandaButton(
+                                        label: '🤖 Cere Mese de la Panda AI',
+                                        icon: Icons.auto_awesome,
+                                        variant: PandaButtonVariant.secondary,
+                                        onPressed: () {
+                                          Navigator.of(context).push(
+                                            MaterialPageRoute<void>(
+                                              builder: (_) => AiNutritionistScreen(
+                                                profile: profile,
+                                                activeMission: activeMission,
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                  ],
+                                ),
+                              );
+                            }
+
+                            return Column(
+                              children: recipes.map((recipe) {
+                                final recipeKey = recipe.id.isNotEmpty ? recipe.id : (recipe.code ?? recipe.title);
+                                final isConsumed = _consumedMealIds.contains(recipeKey);
+
+                                return _buildMealCheckCard(
+                                  recipe: recipe,
+                                  isConsumed: isConsumed,
+                                  onChanged: (_) => _toggleMealConsumption(recipe, recipes),
+                                );
+                              }).toList(),
                             );
                           },
                         ),
@@ -286,7 +381,13 @@ class _DailyLoggerScreenState extends ConsumerState<DailyLoggerScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text('Calories In', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                              const Row(
+                                children: [
+                                  Text('Calories In', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                                  SizedBox(width: 4),
+                                  Icon(Icons.auto_awesome, size: 12, color: AppColors.emeraldLight),
+                                ],
+                              ),
                               const SizedBox(height: 6),
                               TextField(
                                 controller: _caloriesInController,
@@ -389,21 +490,67 @@ class _DailyLoggerScreenState extends ConsumerState<DailyLoggerScreen> {
     );
   }
 
-  Widget _buildDinnerChip(String code, String label) {
-    final isSelected = _selectedDinner == code;
-    return ChoiceChip(
-      label: Text(label),
-      selected: isSelected,
-      onSelected: (_) => setState(() => _selectedDinner = code),
-      selectedColor: AppColors.emerald.withValues(alpha: 0.25),
-      backgroundColor: AppColors.surfaceElevated,
-      labelStyle: TextStyle(
-        color: isSelected ? AppColors.emeraldLight : AppColors.textSecondary,
-        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-        fontSize: 12,
+  Widget _buildMealCheckCard({
+    required MealRecipe recipe,
+    required bool isConsumed,
+    required ValueChanged<bool?> onChanged,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: isConsumed ? AppColors.emerald.withValues(alpha: 0.12) : AppColors.surfaceElevated,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: isConsumed ? AppColors.emerald : AppColors.glassBorder,
+          width: isConsumed ? 1.5 : 1.0,
+        ),
       ),
-      side: BorderSide(
-        color: isSelected ? AppColors.emerald : Colors.transparent,
+      child: CheckboxListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        activeColor: AppColors.emerald,
+        checkColor: Colors.white,
+        value: isConsumed,
+        onChanged: onChanged,
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: AppColors.emerald.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                recipe.category,
+                style: const TextStyle(
+                  color: AppColors.emeraldLight,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                recipe.title,
+                style: TextStyle(
+                  color: isConsumed ? AppColors.textPrimary : AppColors.textSecondary,
+                  fontWeight: isConsumed ? FontWeight.bold : FontWeight.w500,
+                  fontSize: 13,
+                  decoration: isConsumed ? TextDecoration.lineThrough : null,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+        subtitle: Padding(
+          padding: const EdgeInsets.only(top: 4.0),
+          child: Text(
+            '${recipe.calories} kcal · ${recipe.proteinG ?? 0}g P · ${recipe.carbsG ?? 0}g C',
+            style: const TextStyle(color: AppColors.cyanLight, fontSize: 11, fontWeight: FontWeight.w600),
+          ),
+        ),
       ),
     );
   }
