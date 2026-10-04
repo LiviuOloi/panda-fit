@@ -77,16 +77,24 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                     // Brand Logo & Title
                     Center(
                       child: Container(
-                        padding: const EdgeInsets.all(16),
+                        width: 96,
+                        height: 96,
                         decoration: BoxDecoration(
-                          color: AppColors.emerald.withValues(alpha: 0.15),
                           shape: BoxShape.circle,
-                          border: Border.all(color: AppColors.emeraldLight, width: 2),
+                          border: Border.all(color: AppColors.emerald, width: 2.5),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.emerald.withValues(alpha: 0.25),
+                              blurRadius: 16,
+                              spreadRadius: 2,
+                            ),
+                          ],
                         ),
-                        child: const Icon(
-                          Icons.fitness_center,
-                          size: 40,
-                          color: AppColors.emerald,
+                        child: ClipOval(
+                          child: Image.asset(
+                            'assets/images/panda_logo.png',
+                            fit: BoxFit.cover,
+                          ),
                         ),
                       ),
                     ),
