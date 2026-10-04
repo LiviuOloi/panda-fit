@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../../core/constants/app_colors.dart';
@@ -392,6 +393,9 @@ class _OnboardingWizardScreenState extends ConsumerState<OnboardingWizardScreen>
           TextFormField(
             controller: _heightController,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            inputFormatters: [
+              FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,1}')),
+            ],
             decoration: const InputDecoration(
               labelText: 'Height',
               suffixText: 'cm',
@@ -414,6 +418,9 @@ class _OnboardingWizardScreenState extends ConsumerState<OnboardingWizardScreen>
           TextFormField(
             controller: _startWeightController,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            inputFormatters: [
+              FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,1}')),
+            ],
             style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
             decoration: const InputDecoration(
               suffixText: 'kg',
@@ -471,6 +478,9 @@ class _OnboardingWizardScreenState extends ConsumerState<OnboardingWizardScreen>
           TextFormField(
             controller: _missionTargetWeightController,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            inputFormatters: [
+              FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,1}')),
+            ],
             style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
             decoration: const InputDecoration(
               suffixText: 'kg',

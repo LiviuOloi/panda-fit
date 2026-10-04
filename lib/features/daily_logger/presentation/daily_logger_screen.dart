@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/utils/calculation_engine.dart';
@@ -110,6 +111,9 @@ class _DailyLoggerScreenState extends ConsumerState<DailyLoggerScreen> {
                     TextField(
                       controller: _weightController,
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,1}')),
+                      ],
                       style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
                       decoration: const InputDecoration(
                         suffixText: 'kg',
@@ -197,6 +201,7 @@ class _DailyLoggerScreenState extends ConsumerState<DailyLoggerScreen> {
                               TextField(
                                 controller: _caloriesInController,
                                 keyboardType: TextInputType.number,
+                                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                                 decoration: const InputDecoration(suffixText: 'kcal'),
                               ),
                             ],
@@ -212,6 +217,7 @@ class _DailyLoggerScreenState extends ConsumerState<DailyLoggerScreen> {
                               TextField(
                                 controller: _caloriesOutController,
                                 keyboardType: TextInputType.number,
+                                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                                 decoration: const InputDecoration(suffixText: 'kcal'),
                               ),
                             ],
