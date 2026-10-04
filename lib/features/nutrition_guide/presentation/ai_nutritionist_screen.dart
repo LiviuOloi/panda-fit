@@ -44,6 +44,7 @@ class _AiNutritionistScreenState extends ConsumerState<AiNutritionistScreen> {
   final _textController = TextEditingController();
   final _scrollController = ScrollController();
   static const _chatStorageKey = 'panda_eats_ai_chat_history_cache';
+  static const _recipesStorageKey = 'panda_eats_ai_generated_recipes_cache';
 
   bool _isLoading = false;
   final List<Map<String, dynamic>> _messages = [];
@@ -58,9 +59,21 @@ class _AiNutritionistScreenState extends ConsumerState<AiNutritionistScreen> {
   Future<void> _loadChatHistory() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final raw = prefs.getString(_chatStorageKey);
-      if (raw != null) {
-        final list = json.decode(raw) as List<dynamic>;
+      final rawMsgs = prefs.getString(_chatStorageKey);
+      final rawRecipes = prefs.getString(_recipesStorageKey);
+
+      if (rawRecipes != null) {
+        final decodedRecipes = json.decode(rawRecipes) as List<dynamic>;
+        setState(() {
+          _generatedRecipes.clear();
+          _generatedRecipes.addAll(
+            decodedRecipes.map((r) => MealRecipe.fromJson(r as Map<String, dynamic>)),
+          );
+        });
+      }
+
+      if (rawMsgs != null) {
+        final list = json.decode(rawMsgs) as List<dynamic>;
         if (list.isNotEmpty) {
           setState(() {
             _messages.clear();
@@ -99,6 +112,10 @@ class _AiNutritionistScreenState extends ConsumerState<AiNutritionistScreen> {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_chatStorageKey, json.encode(_messages));
+      await prefs.setString(
+        _recipesStorageKey,
+        json.encode(_generatedRecipes.map((r) => r.toJson()).toList()),
+      );
     } catch (_) {}
   }
 

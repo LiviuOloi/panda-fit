@@ -357,41 +357,41 @@ User Query / Request: $userMessage
 
     if (lower.contains('menten') || lower.contains('tdee') || lower.contains('bmr') || lower.contains('calor')) {
       return '''
-📊 **Analiza Metabolică PandaFit:**
-• **BMR (Repaus):** ~$bmr kcal/zi
-• **Mentenanță (TDEE):** ~$maintenance kcal/zi
-• **Ținta Recomandată (${activeMission.missionType.name.toUpperCase()}):** ~$recommendedTarget kcal/zi ${isCutting ? '(-450 kcal deficit pentru ardere sustenabilă a grăsimilor)' : '(+300 kcal surplus pentru hipertrofie curată)'}.''';
+📊 **PandaFit Metabolic Breakdown:**
+• **BMR (Basal Rest):** ~$bmr kcal/day
+• **Maintenance (TDEE):** ~$maintenance kcal/day
+• **Recommended Target (${activeMission.missionType.name.toUpperCase()}):** ~$recommendedTarget kcal/day ${isCutting ? '(-450 kcal fat loss deficit)' : '(+300 kcal lean bulk surplus)'}.''';
     }
 
-    if (lower.contains('dairy') || lower.contains('lactate') || lower.contains('lactoza')) {
-      return '🚫 **Opțiune Fără Lactate (Dairy-Free):** Am configurat meniurile fără produse lactate. Proteinele și grăsimile sănătoase provin din ouă, somon sălbatic, carne slabă și avocado. Verifică propunerea de mai jos!';
+    if (lower.contains('dairy') || lower.contains('lactate') || lower.contains('lactoza') || lower.contains('lactose')) {
+      return '🚫 **Dairy-Free / Lactose-Free Protocol:** I have excluded all dairy items. Your healthy fats and clean protein are sourced from whole eggs, wild salmon, lean meats, and avocado. Check out your tailored recipes below!';
     }
 
-    if (lower.contains('peste') || lower.contains('fish') || lower.contains('somon')) {
-      return '🐟 **Meniu Bogat în Pește & Somon:** Am configurat mese bogate în acizi grași esențiali Omega-3 și proteine calitative cu somon sălbatic și păstrăv. Verifică rețetele propuse mai jos!';
+    if (lower.contains('peste') || lower.contains('fish') || lower.contains('somon') || lower.contains('salmon')) {
+      return '🐟 **High-Fish & Salmon Protocol:** I have crafted meals rich in essential Omega-3 EPA/DHA fatty acids and lean protein using wild salmon and white fish. Check out your proposed meals below!';
     }
 
-    if (lower.contains('cutting') || lower.contains('slabire') || lower.contains('deficit')) {
-      return '🔥 **Plan de Cutting Activat:** Ținta ta zilnică este de ~$recommendedTarget kcal/zi (-450 kcal deficit). Am generat mese cu volum mare de legume și proteine slabe pentru a menține sațietatea optimă.';
+    if (lower.contains('cutting') || lower.contains('slabire') || lower.contains('deficit') || lower.contains('fat loss')) {
+      return '🔥 **Cutting Plan Activated:** Your target is ~$recommendedTarget kcal/day (-450 kcal deficit). I have generated high-volume, fiber-rich meals with lean protein to maximize fullness and energy.';
     }
 
-    if (lower.contains('bulking') || lower.contains('masa')) {
-      return '🦁 **Plan de Bulking Activat:** Ținta ta zilnică este de ~$recommendedTarget kcal/zi (+300 kcal surplus controlat) pentru creștere musculară calitativă.';
+    if (lower.contains('bulking') || lower.contains('masa') || lower.contains('muscle') || lower.contains('surplus')) {
+      return '🦁 **Lean Bulking Plan Activated:** Your target is ~$recommendedTarget kcal/day (+300 kcal controlled surplus) for clean muscular hypertrophy with minimal fat storage.';
     }
 
-    if (lower.contains('quick') || lower.contains('15-min') || lower.contains('rapid')) {
-      return '⚡ **Mese Rapide (15 Minute):** Rețete optimizate pentru timp minim de gătire, păstrând precizia gramajelor brute și volumul glicemic scăzut.';
+    if (lower.contains('quick') || lower.contains('15-min') || lower.contains('rapid') || lower.contains('fast')) {
+      return '⚡ **Quick 15-Minute Meals:** High-speed recipes optimized for rapid prep, while strictly preserving raw-weighed precision and low-glycemic fiber volume!';
     }
 
-    if (lower.contains('inlocui') || lower.contains('schimb') || lower.contains('replace')) {
+    if (lower.contains('inlocui') || lower.contains('schimb') || lower.contains('replace') || lower.contains('substitut')) {
       return '''
-🔄 **Reguli de Echivalență PandaFit:**
-• **100g Orez Uscat (~350 kcal):** = ~350g Cartofi Dulci cruzi = ~80g Fulgi de Ovăz uscați = ~130g Pâine Graham.
-• **200g Piept de Pui Crud (~220 kcal):** = ~220g Somon proaspăt = ~200g Mușchiuleț de Vită slabă = ~230g Păstrăv.
-*Toate gramajele rămân strict măsurate în stare crudă/uscată!*''';
+🔄 **PandaFit Macro Equivalence Rules:**
+• **100g Dry Rice (~350 kcal, 75g Carbs):** = ~350g Raw Sweet Potatoes = ~80g Dry Rolled Oats = ~130g Graham / Whole Wheat Bread.
+• **200g Raw Chicken Breast (~220 kcal, 46g Protein):** = ~220g Fresh Salmon Fillet = ~200g Lean Beef Sirloin = ~230g Trout.
+*All measurements must strictly adhere to raw/dry state protocol!*''';
     }
 
-    return 'Am actualizat planul nutrițional pentru faza **${activeMission.missionType.name.toUpperCase()}** (~$recommendedTarget kcal/zi). Verifică mesele propuse mai jos!';
+    return 'I have updated your meal plan for **${activeMission.missionType.name.toUpperCase()}** (~$recommendedTarget kcal/day). Check out your proposed meals below!';
   }
 }
 
