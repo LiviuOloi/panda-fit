@@ -255,9 +255,16 @@ class _AiNutritionistScreenState extends ConsumerState<AiNutritionistScreen> {
 
     final customApiKey = ref.read(geminiApiKeyProvider).valueOrNull;
 
-    // 1. Generate conversational response (with vision image if provided)
+    // Check if preset chips or explicit recipe cards are requested
+    final shouldGenerateCards = presetText != null ||
+        promptText.toLowerCase().contains('generate meal plan') ||
+        promptText.toLowerCase().contains('retete') ||
+        promptText.toLowerCase().contains('recipe cards');
+
     final history = _messages.map((m) => {'role': m['role'] as String, 'text': m['text'] as String}).toList();
-    final reply = await _aiService.chatConsultation(
+
+    // Run conversational consultation and optional recipe generation in parallel
+    final chatFuture = _aiService.chatConsultation(
       history: history,
       userMessage: promptText,
       profile: widget.profile,
@@ -266,24 +273,19 @@ class _AiNutritionistScreenState extends ConsumerState<AiNutritionistScreen> {
       imageBytes: imageBytesToSend,
     );
 
-    // 2. Generate structured meal proposals if requesting plan or scanned an image
-    List<MealRecipe> generatedForThisMessage = [];
-    if (imageBytesToSend != null ||
-        promptText.toLowerCase().contains('plan') ||
-        promptText.toLowerCase().contains('menu') ||
-        promptText.toLowerCase().contains('meal') ||
-        promptText.toLowerCase().contains('recipe') ||
-        promptText.toLowerCase().contains('cutting') ||
-        promptText.toLowerCase().contains('bulking') ||
-        presetText != null) {
-      generatedForThisMessage = await _aiService.generateCustomMealPlan(
-        profile: widget.profile,
-        activeMission: widget.activeMission,
-        userPreferences: promptText,
-        customApiKey: customApiKey,
-        imageBytes: imageBytesToSend,
-      );
-    }
+    final planFuture = shouldGenerateCards
+        ? _aiService.generateCustomMealPlan(
+            profile: widget.profile,
+            activeMission: widget.activeMission,
+            userPreferences: promptText,
+            customApiKey: customApiKey,
+            imageBytes: imageBytesToSend,
+          )
+        : Future.value(<MealRecipe>[]);
+
+    final results = await Future.wait([chatFuture, planFuture]);
+    final reply = results[0] as String;
+    final generatedForThisMessage = results[1] as List<MealRecipe>;
 
     if (!mounted) return;
 
