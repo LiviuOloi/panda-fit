@@ -380,7 +380,7 @@ class _AiNutritionistScreenState extends ConsumerState<AiNutritionistScreen> {
             ),
             const SizedBox(height: 14),
             PandaButton(
-              label: '📥 Save to My Menu',
+              label: 'Save to My Menu',
               icon: Icons.bookmark_add_outlined,
               variant: PandaButtonVariant.secondary,
               width: double.infinity,

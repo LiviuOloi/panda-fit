@@ -132,7 +132,7 @@ class NutritionGuideScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 16),
                     PandaButton(
-                      label: '✨ Open Panda AI Nutritionist',
+                      label: 'Open Panda AI Nutritionist',
                       icon: Icons.chat_bubble_outline,
                       width: double.infinity,
                       onPressed: () => _openAiNutritionist(context, profile, activeMission),
@@ -187,7 +187,7 @@ class NutritionGuideScreen extends ConsumerWidget {
                   TextButton.icon(
                     onPressed: () => _openCustomRecipeDialog(context),
                     icon: const Icon(Icons.add, size: 18, color: AppColors.emerald),
-                    label: const Text('+ New Meal', style: TextStyle(color: AppColors.emerald, fontWeight: FontWeight.bold)),
+                    label: const Text('New Meal', style: TextStyle(color: AppColors.emerald, fontWeight: FontWeight.bold)),
                   ),
                 ],
               ),
