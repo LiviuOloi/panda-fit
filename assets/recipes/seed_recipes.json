@@ -1,0 +1,85 @@
+[
+  {
+    "category": "BREAKFAST",
+    "code": "BREAKFAST_STD",
+    "title": "Standard High-Protein Omelet & Greens",
+    "ingredients": [
+      { "name": "Whole Eggs", "amount": "3 pcs", "state": "raw" },
+      { "name": "Cottage Cheese Light (3%)", "amount": "100g", "state": "ready" },
+      { "name": "Broccoli", "amount": "80g", "state": "frozen/raw" },
+      { "name": "Green Beans", "amount": "60g", "state": "frozen/raw" },
+      { "name": "Mushrooms", "amount": "60g", "state": "raw" },
+      { "name": "Graham / Whole Wheat Bread", "amount": "70-80g", "state": "ready" },
+      { "name": "Olive Oil (Measured)", "amount": "5g", "state": "measured" }
+    ],
+    "calories": 620,
+    "protein_g": 42.0,
+    "carbs_g": 48.0,
+    "fat_g": 26.0,
+    "instructions": "Whisk eggs with a pinch of salt. Sauté vegetables in measured olive oil on low-medium heat until tender. Add eggs to form omelet. Serve with light cottage cheese and weighed graham bread."
+  },
+  {
+    "category": "SNACK",
+    "code": "SNACK_GREEK_BERRY",
+    "title": "Greek Yogurt & Berry Antioxidant Bowl",
+    "ingredients": [
+      { "name": "Greek Yogurt (2%)", "amount": "150g", "state": "ready" },
+      { "name": "Blueberries (Fresh or Frozen)", "amount": "75g", "state": "raw" },
+      { "name": "Chia Seeds", "amount": "10g", "state": "raw" },
+      { "name": "Natural Peanut Butter (100% Peanuts)", "amount": "10g", "state": "measured" }
+    ],
+    "calories": 240,
+    "protein_g": 18.0,
+    "carbs_g": 18.0,
+    "fat_g": 9.5,
+    "instructions": "Place Greek yogurt in bowl, stir in chia seeds. Top with blueberries and drizzle natural peanut butter on top."
+  },
+  {
+    "category": "DINNER",
+    "code": "DINNER_A",
+    "title": "Dinner Option A: Lean Chicken Breast, Rice & Pickles",
+    "ingredients": [
+      { "name": "Chicken Breast", "amount": "200-250g", "state": "raw/weighed" },
+      { "name": "Panzani Rice (or Basmati)", "amount": "125g", "state": "dry/uncooked" },
+      { "name": "Mixed Stir-Fry Vegetables", "amount": "250g", "state": "frozen/raw" },
+      { "name": "Pickles / Cucumbers in Brine", "amount": "50-100g", "state": "ready" },
+      { "name": "Olive Oil (Optional)", "amount": "0-5g", "state": "measured" }
+    ],
+    "calories": 780,
+    "protein_g": 62.0,
+    "carbs_g": 105.0,
+    "fat_g": 8.0,
+    "instructions": "Boil 125g dry rice. Cook seasoned raw chicken breast and vegetables in non-stick pan with measured oil or air-fryer. Serve with probiotic pickles."
+  },
+  {
+    "category": "DINNER",
+    "code": "DINNER_B",
+    "title": "Dinner Option B: Pork Collar & High-Volume Veggies",
+    "ingredients": [
+      { "name": "Pork Collar (Ceafa de porc)", "amount": "180-200g", "state": "raw/weighed" },
+      { "name": "Mixed Vegetables (Broccoli, Cauliflower, Beans)", "amount": "300g", "state": "frozen/raw" },
+      { "name": "Pickles / Cucumbers in Brine", "amount": "50-100g", "state": "ready" },
+      { "name": "Added Cooking Oil", "amount": "0g", "state": "none" }
+    ],
+    "calories": 540,
+    "protein_g": 44.0,
+    "carbs_g": 20.0,
+    "fat_g": 32.0,
+    "instructions": "Grill or pan-sear raw pork collar in its own natural juices without adding oil. Steam or stir-fry 300g vegetables. Serve with tangy pickles."
+  },
+  {
+    "category": "DINNER",
+    "code": "DINNER_C",
+    "title": "Dinner Option C: Chicken Breast & Air-Fried Potato Wedges",
+    "ingredients": [
+      { "name": "Chicken Breast", "amount": "200-250g", "state": "raw/weighed" },
+      { "name": "Gustona Potato Wedges (Air-fried)", "amount": "200g", "state": "raw/frozen" },
+      { "name": "Pickles / Cucumbers in Brine", "amount": "50-100g", "state": "ready" }
+    ],
+    "calories": 610,
+    "protein_g": 58.0,
+    "carbs_g": 48.0,
+    "fat_g": 14.0,
+    "instructions": "Air-fry Gustona potato wedges until crisp (approx 15-18 min at 190°C). Grill raw chicken breast with favorite spices. Accompany with crunchy pickles."
+  }
+]
