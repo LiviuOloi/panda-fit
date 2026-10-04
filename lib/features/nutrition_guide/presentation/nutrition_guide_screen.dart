@@ -7,9 +7,11 @@ import '../../auth/presentation/auth_controller.dart';
 import '../../missions/domain/mission_model.dart';
 import '../../profile/domain/profile_model.dart';
 import '../../profile/presentation/profile_controller.dart';
+import '../data/gemini_api_key_provider.dart';
 import '../domain/recipe_model.dart';
 import 'ai_nutritionist_screen.dart';
 import 'custom_recipe_dialog.dart';
+import 'gemini_api_key_dialog.dart';
 
 class NutritionGuideScreen extends ConsumerWidget {
   const NutritionGuideScreen({super.key});
@@ -32,11 +34,20 @@ class NutritionGuideScreen extends ConsumerWidget {
     );
   }
 
+  void _openApiKeyDialog(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      builder: (_) => const GeminiApiKeyDialog(),
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(currentUserProvider);
     final profileAsync = ref.watch(userProfileProvider);
     final recipesAsync = ref.watch(allRecipesProvider);
+    final apiKeyAsync = ref.watch(geminiApiKeyProvider);
+    final hasApiKey = apiKeyAsync.valueOrNull != null && apiKeyAsync.valueOrNull!.isNotEmpty;
 
     final profile = profileAsync.valueOrNull ??
         UserProfile(
@@ -71,26 +82,134 @@ class NutritionGuideScreen extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Header
-              const Text(
-                'NUTRITION & AI COACH',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1.2,
-                  color: AppColors.emerald,
-                ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'PANDA EATS AI',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1.2,
+                          color: AppColors.emerald,
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        'Glycemic Food Matrix',
+                        style: TextStyle(
+                          fontSize: 26,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textPrimary,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                  IconButton(
+                    icon: Icon(
+                      Icons.key,
+                      color: hasApiKey ? AppColors.emerald : AppColors.amber,
+                      size: 22,
+                    ),
+                    tooltip: hasApiKey ? 'Gemini AI Key Configured' : 'Setup Free Gemini AI Key',
+                    onPressed: () => _openApiKeyDialog(context),
+                  ),
+                ],
               ),
-              const SizedBox(height: 4),
-              const Text(
-                'Glycemic Food Matrix',
-                style: TextStyle(
-                  fontSize: 26,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
-                  letterSpacing: -0.5,
+              const SizedBox(height: 16),
+
+              // Gemini Live AI Setup / Status Banner
+              if (!hasApiKey)
+                Container(
+                  margin: const EdgeInsets.only(bottom: 20),
+                  child: GlassCard(
+                    borderColor: AppColors.amber.withValues(alpha: 0.6),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: AppColors.amber.withValues(alpha: 0.2),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.bolt, color: AppColors.amber, size: 22),
+                            ),
+                            const SizedBox(width: 12),
+                            const Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    '⚡ Activate Live AI & Web Search',
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.bold,
+                                      color: AppColors.textPrimary,
+                                    ),
+                                  ),
+                                  Text(
+                                    '100% Free · Google Gemini 1.5/2.0 Flash · No credit card required',
+                                    style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        const Text(
+                          'Connect your free Google AI Studio key to unlock dynamic unlimited recipes, real-time nutrition coaching, and web search.',
+                          style: TextStyle(color: AppColors.textMuted, fontSize: 12, height: 1.3),
+                        ),
+                        const SizedBox(height: 14),
+                        PandaButton(
+                          label: 'Setup Free Gemini API Key (30 sec)',
+                          icon: Icons.key,
+                          variant: PandaButtonVariant.secondary,
+                          width: double.infinity,
+                          onPressed: () => _openApiKeyDialog(context),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              else
+                Container(
+                  margin: const EdgeInsets.only(bottom: 20),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: AppColors.emerald.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.emerald.withValues(alpha: 0.4)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.check_circle, color: AppColors.emerald, size: 20),
+                      const SizedBox(width: 10),
+                      const Expanded(
+                        child: Text(
+                          '⚡ Panda Live AI Active (Google Gemini Flash)',
+                          style: TextStyle(
+                            color: AppColors.emeraldLight,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () => _openApiKeyDialog(context),
+                        child: const Text('Manage Key', style: TextStyle(color: AppColors.cyan, fontSize: 11)),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(height: 20),
 
               // AI Nutritionist Feature Banner
               GlassCard(

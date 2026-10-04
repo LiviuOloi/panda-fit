@@ -98,7 +98,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
             NavigationDestination(
               icon: Icon(Icons.restaurant_menu_outlined, color: AppColors.textSecondary),
               selectedIcon: Icon(Icons.restaurant_menu, color: AppColors.emerald),
-              label: 'Nutrition',
+              label: 'Panda Eats AI',
             ),
             NavigationDestination(
               icon: Icon(Icons.person_outline, color: AppColors.textSecondary),

@@ -8,8 +8,10 @@ import '../../auth/presentation/auth_controller.dart';
 import '../../missions/domain/mission_model.dart';
 import '../../profile/domain/profile_model.dart';
 import '../data/ai_nutrition_service.dart';
+import '../data/gemini_api_key_provider.dart';
 import '../data/recipes_repository.dart';
 import '../domain/recipe_model.dart';
+import 'gemini_api_key_dialog.dart';
 
 final recipesRepositoryProvider = Provider<RecipesRepository>((ref) {
   return RecipesRepository();
@@ -87,6 +89,8 @@ class _AiNutritionistScreenState extends ConsumerState<AiNutritionistScreen> {
 
     _scrollToBottom();
 
+    final customApiKey = ref.read(geminiApiKeyProvider).valueOrNull;
+
     // 1. Generate conversational response
     final history = _messages.map((m) => {'role': m['role'] as String, 'text': m['text'] as String}).toList();
     final reply = await _aiService.chatConsultation(
@@ -94,6 +98,7 @@ class _AiNutritionistScreenState extends ConsumerState<AiNutritionistScreen> {
       userMessage: text,
       profile: widget.profile,
       activeMission: widget.activeMission,
+      customApiKey: customApiKey,
     );
 
     // 2. Generate structured meal proposals if requesting plan
@@ -108,6 +113,7 @@ class _AiNutritionistScreenState extends ConsumerState<AiNutritionistScreen> {
         profile: widget.profile,
         activeMission: widget.activeMission,
         userPreferences: text,
+        customApiKey: customApiKey,
       );
       _generatedRecipes.clear();
       _generatedRecipes.addAll(recipes);
@@ -177,8 +183,18 @@ class _AiNutritionistScreenState extends ConsumerState<AiNutritionistScreen> {
     });
   }
 
+  void _openApiKeyDialog() {
+    showDialog<void>(
+      context: context,
+      builder: (_) => const GeminiApiKeyDialog(),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final apiKeyAsync = ref.watch(geminiApiKeyProvider);
+    final hasApiKey = apiKeyAsync.valueOrNull != null && apiKeyAsync.valueOrNull!.isNotEmpty;
+
     return Scaffold(
       appBar: AppBar(
         title: const Row(
@@ -186,11 +202,22 @@ class _AiNutritionistScreenState extends ConsumerState<AiNutritionistScreen> {
             Icon(Icons.smart_toy_outlined, color: AppColors.emeraldLight, size: 22),
             SizedBox(width: 8),
             Text(
-              'Panda Coach AI Nutritionist',
+              'Panda Eats AI Coach',
               style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
             ),
           ],
         ),
+        actions: [
+          IconButton(
+            icon: Icon(
+              Icons.key,
+              color: hasApiKey ? AppColors.emerald : AppColors.amber,
+              size: 22,
+            ),
+            tooltip: hasApiKey ? 'Gemini Live AI Active' : 'Setup Free Gemini Key',
+            onPressed: _openApiKeyDialog,
+          ),
+        ],
         backgroundColor: AppColors.surface,
         elevation: 0,
       ),
