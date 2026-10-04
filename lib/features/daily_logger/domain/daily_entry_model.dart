@@ -53,8 +53,7 @@ class DailyEntry {
   }
 
   Map<String, dynamic> toJson() {
-    return {
-      'id': id,
+    final map = <String, dynamic>{
       'user_id': userId,
       'entry_date': entryDate.toIso8601String().split('T').first,
       'weight': weight,
@@ -68,5 +67,9 @@ class DailyEntry {
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
     };
+    if (id.isNotEmpty) {
+      map['id'] = id;
+    }
+    return map;
   }
 }

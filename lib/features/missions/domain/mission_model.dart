@@ -71,8 +71,7 @@ class Mission {
   }
 
   Map<String, dynamic> toJson() {
-    return {
-      'id': id,
+    final map = <String, dynamic>{
       'user_id': userId,
       'mission_type': missionType == MissionType.cutting ? 'CUTTING' : 'BULKING',
       'mission_start_weight': missionStartWeight,
@@ -83,5 +82,9 @@ class Mission {
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
     };
+    if (id.isNotEmpty && id != userId) {
+      map['id'] = id;
+    }
+    return map;
   }
 }
