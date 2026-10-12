@@ -13,8 +13,23 @@ import 'ai_nutritionist_screen.dart';
 import 'custom_recipe_dialog.dart';
 import 'gemini_api_key_dialog.dart';
 
-class NutritionGuideScreen extends ConsumerWidget {
+class NutritionGuideScreen extends ConsumerStatefulWidget {
   const NutritionGuideScreen({super.key});
+
+  @override
+  ConsumerState<NutritionGuideScreen> createState() => _NutritionGuideScreenState();
+}
+
+class _NutritionGuideScreenState extends ConsumerState<NutritionGuideScreen> {
+  final TextEditingController _searchController = TextEditingController();
+  String _selectedCategory = 'ALL';
+  String _sortOption = 'DEFAULT';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   void _openAiNutritionist(BuildContext context, UserProfile profile, Mission activeMission) {
     Navigator.of(context).push(
@@ -41,8 +56,37 @@ class NutritionGuideScreen extends ConsumerWidget {
     );
   }
 
+  Widget _buildCategoryPill(String code, String label) {
+    final isSelected = _selectedCategory == code;
+    return InkWell(
+      onTap: () => setState(() => _selectedCategory = code),
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? AppColors.emerald.withValues(alpha: 0.25)
+              : AppColors.surface,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isSelected ? AppColors.emerald : AppColors.glassBorder,
+            width: isSelected ? 1.5 : 1.0,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+            color: isSelected ? AppColors.emeraldLight : AppColors.textSecondary,
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final user = ref.watch(currentUserProvider);
     final profileAsync = ref.watch(userProfileProvider);
     final recipesAsync = ref.watch(allRecipesProvider);
@@ -303,6 +347,103 @@ class NutritionGuideScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 12),
 
+              // Search Bar & Sort Dropdown
+              Row(
+                children: [
+                  Expanded(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.glassBorder),
+                      ),
+                      child: TextField(
+                        controller: _searchController,
+                        onChanged: (_) => setState(() {}),
+                        style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
+                        decoration: InputDecoration(
+                          hintText: 'Caută rețetă sau ingredient (pui, orez, ouă...)',
+                          hintStyle: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+                          prefixIcon: const Icon(Icons.search, size: 18, color: AppColors.cyanLight),
+                          suffixIcon: _searchController.text.isNotEmpty
+                              ? IconButton(
+                                  icon: const Icon(Icons.close, size: 16, color: AppColors.textMuted),
+                                  onPressed: () => setState(() => _searchController.clear()),
+                                )
+                              : null,
+                          border: InputBorder.none,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  PopupMenuButton<String>(
+                    tooltip: 'Sortează mesele',
+                    color: AppColors.surfaceElevated,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: const BorderSide(color: AppColors.glassBorder),
+                    ),
+                    initialValue: _sortOption,
+                    onSelected: (val) => setState(() => _sortOption = val),
+                    itemBuilder: (ctx) => [
+                      const PopupMenuItem(
+                        value: 'DEFAULT',
+                        child: Text('Ordinea inițială', style: TextStyle(fontSize: 12, color: AppColors.textPrimary)),
+                      ),
+                      const PopupMenuItem(
+                        value: 'PROTEIN_DESC',
+                        child: Text('🥩 Max Proteină (g)', style: TextStyle(fontSize: 12, color: AppColors.cyanLight)),
+                      ),
+                      const PopupMenuItem(
+                        value: 'CALORIES_ASC',
+                        child: Text('🔥 Min Calorii (kcal)', style: TextStyle(fontSize: 12, color: AppColors.emeraldLight)),
+                      ),
+                      const PopupMenuItem(
+                        value: 'CALORIES_DESC',
+                        child: Text('⚡ Max Calorii (kcal)', style: TextStyle(fontSize: 12, color: AppColors.amber)),
+                      ),
+                    ],
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: _sortOption != 'DEFAULT' ? AppColors.emerald.withValues(alpha: 0.2) : AppColors.surface,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: _sortOption != 'DEFAULT' ? AppColors.emerald : AppColors.glassBorder,
+                        ),
+                      ),
+                      child: Icon(
+                        Icons.swap_vert_rounded,
+                        size: 20,
+                        color: _sortOption != 'DEFAULT' ? AppColors.emeraldLight : AppColors.textSecondary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+
+              // Category Pills
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    _buildCategoryPill('ALL', '🍽️ Toate'),
+                    const SizedBox(width: 6),
+                    _buildCategoryPill('BREAKFAST', '🍳 Mic Dejun'),
+                    const SizedBox(width: 6),
+                    _buildCategoryPill('SNACK', '🫐 Gustare'),
+                    const SizedBox(width: 6),
+                    _buildCategoryPill('DINNER', '🍗 Cină'),
+                    const SizedBox(width: 6),
+                    _buildCategoryPill('CUSTOM', '⭐ Personalizate'),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14),
+
               recipesAsync.when(
                 loading: () => const Center(
                   child: Padding(
@@ -361,10 +502,80 @@ class NutritionGuideScreen extends ConsumerWidget {
                     );
                   }
 
-                  final totalCal = recipes.fold<int>(0, (sum, r) => sum + r.calories);
-                  final totalP = recipes.fold<double>(0.0, (sum, r) => sum + (r.proteinG ?? 0));
-                  final totalC = recipes.fold<double>(0.0, (sum, r) => sum + (r.carbsG ?? 0));
-                  final totalF = recipes.fold<double>(0.0, (sum, r) => sum + (r.fatG ?? 0));
+                  // Apply search and category filters
+                  final query = _searchController.text.trim().toLowerCase();
+                  final filtered = recipes.where((r) {
+                    if (_selectedCategory == 'CUSTOM') {
+                      if (r.userId == null || r.userId!.isEmpty) return false;
+                    } else if (_selectedCategory != 'ALL') {
+                      if (r.category.toUpperCase() != _selectedCategory) return false;
+                    }
+
+                    if (query.isNotEmpty) {
+                      final titleMatch = r.title.toLowerCase().contains(query);
+                      final catMatch = r.category.toLowerCase().contains(query);
+                      final ingMatch = r.ingredients.any(
+                        (i) => i.name.toLowerCase().contains(query) || i.state.toLowerCase().contains(query),
+                      );
+                      if (!titleMatch && !catMatch && !ingMatch) return false;
+                    }
+
+                    return true;
+                  }).toList();
+
+                  // Apply sorting
+                  if (_sortOption == 'PROTEIN_DESC') {
+                    filtered.sort((a, b) => (b.proteinG ?? 0).compareTo(a.proteinG ?? 0));
+                  } else if (_sortOption == 'CALORIES_ASC') {
+                    filtered.sort((a, b) => a.calories.compareTo(b.calories));
+                  } else if (_sortOption == 'CALORIES_DESC') {
+                    filtered.sort((a, b) => b.calories.compareTo(a.calories));
+                  }
+
+                  if (filtered.isEmpty) {
+                    return Container(
+                      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.glassBorder),
+                      ),
+                      child: Column(
+                        children: [
+                          const Icon(Icons.search_off_rounded, size: 36, color: AppColors.textMuted),
+                          const SizedBox(height: 10),
+                          Text(
+                            'Nicio masă găsită pentru "${_searchController.text}".',
+                            style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold, fontSize: 14),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 4),
+                          const Text(
+                            'Încearcă alt termen sau comută categoria filtrului.',
+                            style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 14),
+                          TextButton.icon(
+                            onPressed: () {
+                              setState(() {
+                                _searchController.clear();
+                                _selectedCategory = 'ALL';
+                                _sortOption = 'DEFAULT';
+                              });
+                            },
+                            icon: const Icon(Icons.refresh, size: 16, color: AppColors.emerald),
+                            label: const Text('Resetează Filtrele', style: TextStyle(color: AppColors.emerald, fontWeight: FontWeight.bold)),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+
+                  final totalCal = filtered.fold<int>(0, (sum, r) => sum + r.calories);
+                  final totalP = filtered.fold<double>(0.0, (sum, r) => sum + (r.proteinG ?? 0));
+                  final totalC = filtered.fold<double>(0.0, (sum, r) => sum + (r.carbsG ?? 0));
+                  final totalF = filtered.fold<double>(0.0, (sum, r) => sum + (r.fatG ?? 0));
 
                   return Column(
                     children: [
@@ -380,9 +591,11 @@ class NutritionGuideScreen extends ConsumerWidget {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text(
-                              'Total Plan Zilnic:',
-                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.textPrimary),
+                            Text(
+                              _selectedCategory == 'ALL' && query.isEmpty
+                                  ? 'Total Plan Zilnic:'
+                                  : 'Total Filtrate (${filtered.length} mese):',
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: AppColors.textPrimary),
                             ),
                             Text(
                               '$totalCal kcal · ${totalP.toStringAsFixed(0)}g P · ${totalC.toStringAsFixed(0)}g C · ${totalF.toStringAsFixed(0)}g F',
@@ -391,7 +604,7 @@ class NutritionGuideScreen extends ConsumerWidget {
                           ],
                         ),
                       ),
-                      ...recipes.map((r) => _buildRecipeCard(context, ref, r)),
+                      ...filtered.map((r) => _buildRecipeCard(context, ref, r)),
                     ],
                   );
                 },
@@ -404,6 +617,7 @@ class NutritionGuideScreen extends ConsumerWidget {
       ),
     );
   }
+
 
   Widget _buildRecipeCard(BuildContext context, WidgetRef ref, MealRecipe recipe) {
     final isCustom = recipe.userId != null && recipe.userId!.isNotEmpty;
