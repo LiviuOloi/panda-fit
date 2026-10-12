@@ -10,6 +10,7 @@ import '../../profile/presentation/profile_controller.dart';
 import '../data/gemini_api_key_provider.dart';
 import '../domain/recipe_model.dart';
 import 'ai_nutritionist_screen.dart';
+import 'barcode_scanner_dialog.dart';
 import 'custom_recipe_dialog.dart';
 import 'gemini_api_key_dialog.dart';
 
@@ -29,6 +30,26 @@ class _NutritionGuideScreenState extends ConsumerState<NutritionGuideScreen> {
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  void _openBarcodeScanner(BuildContext context, UserProfile profile, Mission activeMission) {
+    BarcodeScannerDialog.show(
+      context,
+      onConsultAi: (prompt) {
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => AiNutritionistScreen(
+              profile: profile,
+              activeMission: activeMission,
+              initialPrompt: prompt,
+            ),
+          ),
+        );
+      },
+      onRecipeSaved: (recipe) {
+        ref.invalidate(allRecipesProvider);
+      },
+    );
   }
 
   void _openAiNutritionist(BuildContext context, UserProfile profile, Mission activeMission) {
@@ -299,6 +320,11 @@ class _NutritionGuideScreenState extends ConsumerState<NutritionGuideScreen> {
                   ),
                   Row(
                     children: [
+                      TextButton.icon(
+                        onPressed: () => _openBarcodeScanner(context, profile, activeMission),
+                        icon: const Icon(Icons.qr_code_scanner, size: 16, color: AppColors.amber),
+                        label: const Text('Scanează', style: TextStyle(color: AppColors.amber, fontWeight: FontWeight.bold)),
+                      ),
                       if (recipesAsync.valueOrNull != null && recipesAsync.valueOrNull!.isNotEmpty)
                         TextButton.icon(
                           onPressed: () => _openAiNutritionist(context, profile, activeMission),
@@ -487,6 +513,14 @@ class _NutritionGuideScreenState extends ConsumerState<NutritionGuideScreen> {
                               icon: Icons.auto_awesome,
                               width: double.infinity,
                               onPressed: () => _openAiNutritionist(context, profile, activeMission),
+                            ),
+                            const SizedBox(height: 10),
+                            PandaButton(
+                              label: 'Scanează Cod de Bare Aliment 📸',
+                              icon: Icons.qr_code_scanner,
+                              variant: PandaButtonVariant.secondary,
+                              width: double.infinity,
+                              onPressed: () => _openBarcodeScanner(context, profile, activeMission),
                             ),
                             const SizedBox(height: 10),
                             PandaButton(

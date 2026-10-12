@@ -11,6 +11,7 @@ import '../../../../core/widgets/panda_button.dart';
 import '../../auth/presentation/auth_controller.dart';
 import '../../nutrition_guide/domain/recipe_model.dart';
 import '../../nutrition_guide/presentation/ai_nutritionist_screen.dart';
+import '../../nutrition_guide/presentation/barcode_scanner_dialog.dart';
 import '../../profile/presentation/profile_controller.dart';
 import '../domain/daily_entry_model.dart';
 
@@ -531,19 +532,46 @@ class _DailyLoggerScreenState extends ConsumerState<DailyLoggerScreen> {
                           ],
                         ),
                         if (profile != null && activeMission != null)
-                          IconButton(
-                            icon: const Icon(Icons.smart_toy_outlined, color: AppColors.emeraldLight),
-                            tooltip: 'Consult Panda Coach AI',
-                            onPressed: () {
-                              Navigator.of(context).push(
-                                MaterialPageRoute<void>(
-                                  builder: (_) => AiNutritionistScreen(
-                                    profile: profile,
-                                    activeMission: activeMission,
-                                  ),
-                                ),
-                              );
-                            },
+                          Row(
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.qr_code_scanner, color: AppColors.amber),
+                                tooltip: 'Scanează Cod de Bare Aliment',
+                                onPressed: () {
+                                  BarcodeScannerDialog.show(
+                                    context,
+                                    onConsultAi: (prompt) {
+                                      Navigator.of(context).push(
+                                        MaterialPageRoute<void>(
+                                          builder: (_) => AiNutritionistScreen(
+                                            profile: profile,
+                                            activeMission: activeMission,
+                                            initialPrompt: prompt,
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                    onRecipeSaved: (recipe) {
+                                      ref.invalidate(allRecipesProvider);
+                                    },
+                                  );
+                                },
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.smart_toy_outlined, color: AppColors.emeraldLight),
+                                tooltip: 'Consult Panda Coach AI',
+                                onPressed: () {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute<void>(
+                                      builder: (_) => AiNutritionistScreen(
+                                        profile: profile,
+                                        activeMission: activeMission,
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ],
                           ),
                       ],
                     ),

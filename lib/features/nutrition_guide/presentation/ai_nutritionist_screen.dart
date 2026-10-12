@@ -31,11 +31,13 @@ final allRecipesProvider = FutureProvider<List<MealRecipe>>((ref) async {
 class AiNutritionistScreen extends ConsumerStatefulWidget {
   final UserProfile profile;
   final Mission activeMission;
+  final String? initialPrompt;
 
   const AiNutritionistScreen({
     super.key,
     required this.profile,
     required this.activeMission,
+    this.initialPrompt,
   });
 
   @override
@@ -78,12 +80,24 @@ class _AiNutritionistScreenState extends ConsumerState<AiNutritionistScreen> {
             _messages.clear();
             _messages.addAll(loadedMessages);
           });
+          _handleInitialPrompt();
           return;
         }
       }
     } catch (_) {}
 
     _setDefaultWelcome();
+    _handleInitialPrompt();
+  }
+
+  void _handleInitialPrompt() {
+    if (widget.initialPrompt != null && widget.initialPrompt!.trim().isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _sendMessage(widget.initialPrompt);
+        }
+      });
+    }
   }
 
   void _setDefaultWelcome() {
