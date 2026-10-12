@@ -104,5 +104,13 @@ void main() {
         expect(demo.name.isNotEmpty, isTrue);
       }
     });
+
+    test('Demo barcodes are preloaded and return instant results without network', () async {
+      final service = OpenFoodFactsService();
+      final demoProduct = await service.fetchProduct('5941875904169');
+      expect(demoProduct, isNotNull);
+      expect(demoProduct!.brand, 'Olympus');
+      expect(demoProduct.name.contains('Cottage'), isTrue);
+    });
   });
 }
