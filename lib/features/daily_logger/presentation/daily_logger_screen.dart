@@ -1,6 +1,8 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/utils/activity_calories_calculator.dart';
 import '../../../../core/utils/calculation_engine.dart';
@@ -25,7 +27,10 @@ class _DailyLoggerScreenState extends ConsumerState<DailyLoggerScreen> {
   final _weightController = TextEditingController();
   final _caloriesInController = TextEditingController(text: '0');
   final _caloriesOutController = TextEditingController(text: '0');
+  final _notesController = TextEditingController();
 
+  late DateTime _selectedDate;
+  bool _planFollowed = true;
   final Set<String> _consumedMealIds = {};
   final List<LoggedActivity> _loggedActivities = [];
   bool _swimming = false;
@@ -36,6 +41,8 @@ class _DailyLoggerScreenState extends ConsumerState<DailyLoggerScreen> {
   @override
   void initState() {
     super.initState();
+    final now = DateTime.now();
+    _selectedDate = DateTime(now.year, now.month, now.day);
     _weightController.addListener(_onWeightChanged);
   }
 
@@ -45,6 +52,7 @@ class _DailyLoggerScreenState extends ConsumerState<DailyLoggerScreen> {
     _weightController.dispose();
     _caloriesInController.dispose();
     _caloriesOutController.dispose();
+    _notesController.dispose();
     super.dispose();
   }
 
@@ -54,26 +62,116 @@ class _DailyLoggerScreenState extends ConsumerState<DailyLoggerScreen> {
     }
   }
 
+  bool _isSameDay(DateTime a, DateTime b) {
+    return a.year == b.year && a.month == b.month && a.day == b.day;
+  }
+
   void _prefillDataIfNeeded() {
     if (_isInitialized) return;
+    _loadDateData(_selectedDate);
+    _isInitialized = true;
+  }
 
-    final profile = ref.read(userProfileProvider).value;
+  void _loadDateData(DateTime targetDate) {
     final entries = ref.read(dailyEntriesProvider).value ?? [];
+    final matching = entries.where((e) => _isSameDay(e.entryDate, targetDate)).toList();
 
-    if (entries.isNotEmpty && entries.first.weight != null) {
-      // Prefill with the most recent logged morning weight
-      _weightController.text = entries.first.weight!.toStringAsFixed(1);
-      if (entries.first.caloriesIn != null) {
-        _caloriesInController.text = entries.first.caloriesIn!.toString();
+    if (matching.isNotEmpty) {
+      final entry = matching.first;
+      _weightController.text = entry.weight?.toStringAsFixed(1) ?? '';
+      _caloriesInController.text = (entry.caloriesIn ?? 0).toString();
+      _caloriesOutController.text = (entry.caloriesOut ?? 0).toString();
+      _planFollowed = entry.planFollowed;
+      _swimming = entry.swimming;
+      _selectedDinner = entry.selectedDinner ?? 'NONE';
+
+      if (entry.notes != null && entry.notes!.trim().startsWith('{')) {
+        try {
+          final decoded = json.decode(entry.notes!) as Map<String, dynamic>;
+          _consumedMealIds.clear();
+          if (decoded['consumed_meal_ids'] != null) {
+            final ids = (decoded['consumed_meal_ids'] as List<dynamic>).map((e) => e.toString()).toSet();
+            _consumedMealIds.addAll(ids);
+          }
+          _loggedActivities.clear();
+          if (decoded['activities'] != null) {
+            for (final item in decoded['activities'] as List<dynamic>) {
+              final m = item as Map<String, dynamic>;
+              final typeStr = m['type'] as String? ?? 'weightlifting';
+              final actType = PhysicalActivityType.values.firstWhere(
+                (v) => v.name == typeStr,
+                orElse: () => PhysicalActivityType.weightlifting,
+              );
+              _loggedActivities.add(
+                LoggedActivity(
+                  id: m['id'] as String? ?? DateTime.now().microsecondsSinceEpoch.toString(),
+                  activityType: actType,
+                  durationMinutes: (m['duration'] as num?)?.toInt() ?? 30,
+                  customCalories: (m['custom_cal'] as num?)?.toInt(),
+                  isDurationMode: m['is_duration'] as bool? ?? true,
+                ),
+              );
+            }
+          }
+          _notesController.text = decoded['user_notes'] as String? ?? '';
+        } catch (_) {
+          _notesController.text = entry.notes ?? '';
+        }
+      } else {
+        _notesController.text = entry.notes ?? '';
       }
-      if (entries.first.caloriesOut != null) {
-        _caloriesOutController.text = entries.first.caloriesOut!.toString();
+    } else {
+      final isToday = _isSameDay(targetDate, DateTime.now());
+      if (isToday) {
+        if (entries.isNotEmpty && entries.first.weight != null) {
+          _weightController.text = entries.first.weight!.toStringAsFixed(1);
+        } else {
+          final profile = ref.read(userProfileProvider).value;
+          _weightController.text = profile?.profileStartWeight.toStringAsFixed(1) ?? '';
+        }
+      } else {
+        _weightController.text = '';
       }
-      _isInitialized = true;
-    } else if (profile != null) {
-      // First time logging: prefill with account starting weight
-      _weightController.text = profile.profileStartWeight.toStringAsFixed(1);
-      _isInitialized = true;
+      _caloriesInController.text = '0';
+      _caloriesOutController.text = '0';
+      _consumedMealIds.clear();
+      _loggedActivities.clear();
+      _notesController.clear();
+      _planFollowed = true;
+      _swimming = false;
+      _selectedDinner = 'NONE';
+    }
+  }
+
+  void _changeDate(DateTime newDate) {
+    setState(() {
+      _selectedDate = DateTime(newDate.year, newDate.month, newDate.day);
+      _loadDateData(_selectedDate);
+    });
+  }
+
+  Future<void> _pickDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now().add(const Duration(days: 1)),
+      builder: (context, child) {
+        return Theme(
+          data: ThemeData.dark().copyWith(
+            colorScheme: const ColorScheme.dark(
+              primary: AppColors.emerald,
+              onPrimary: Colors.white,
+              surface: AppColors.surface,
+              onSurface: AppColors.textPrimary,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (picked != null) {
+      _changeDate(picked);
     }
   }
 
@@ -87,7 +185,6 @@ class _DailyLoggerScreenState extends ConsumerState<DailyLoggerScreen> {
         _consumedMealIds.add(recipeKey);
       }
 
-      // Automatically sum calories of all checked meals
       int totalCalories = 0;
       String lastDinner = 'NONE';
 
@@ -171,21 +268,31 @@ class _DailyLoggerScreenState extends ConsumerState<DailyLoggerScreen> {
     setState(() => _isSaving = true);
 
     try {
-      final now = DateTime.now();
-      final todayDate = DateTime(now.year, now.month, now.day);
+      final metadata = {
+        'consumed_meal_ids': _consumedMealIds.toList(),
+        'activities': _loggedActivities.map((a) => {
+          'id': a.id,
+          'type': a.activityType.name,
+          'duration': a.durationMinutes,
+          'custom_cal': a.customCalories,
+          'is_duration': a.isDurationMode,
+        },).toList(),
+        'user_notes': _notesController.text.trim(),
+      };
+      final encodedNotes = json.encode(metadata);
 
       final entry = DailyEntry(
         id: '',
         userId: user.id,
-        entryDate: todayDate,
+        entryDate: _selectedDate,
         weight: roundedWeight,
         swimming: _swimming,
-        planFollowed: true,
+        planFollowed: _planFollowed,
         caloriesIn: calIn,
         caloriesOut: calOut,
         netCalories: netCal,
         selectedDinner: _selectedDinner,
-        notes: null,
+        notes: encodedNotes,
         createdAt: DateTime.now().toUtc(),
         updatedAt: DateTime.now().toUtc(),
       );
@@ -201,9 +308,10 @@ class _DailyLoggerScreenState extends ConsumerState<DailyLoggerScreen> {
 
       if (!mounted) return;
 
+      final dateLabel = DateFormat('d MMM yyyy').format(_selectedDate);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Log saved! Weight: ${roundedWeight.toStringAsFixed(1)} kg | In: $calIn kcal | Burned: $calOut kcal'),
+          content: Text('Jurnal salvat ($dateLabel)! Greutate: ${roundedWeight.toStringAsFixed(1)} kg | In: $calIn kcal | Arse: $calOut kcal 🐼'),
           backgroundColor: AppColors.emerald,
         ),
       );
@@ -213,7 +321,7 @@ class _DailyLoggerScreenState extends ConsumerState<DailyLoggerScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error saving log: $e'),
+          content: Text('Eroare la salvare: $e'),
           backgroundColor: AppColors.rose,
         ),
       );
@@ -240,6 +348,11 @@ class _DailyLoggerScreenState extends ConsumerState<DailyLoggerScreen> {
     final rawWeight = double.tryParse(_weightController.text);
     final effectiveWeight = rawWeight ?? profile?.profileStartWeight ?? 80.0;
 
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final isToday = _isSameDay(_selectedDate, today);
+    final isYesterday = _isSameDay(_selectedDate, today.subtract(const Duration(days: 1)));
+
     return Scaffold(
       body: SafeArea(
         child: SingleChildScrollView(
@@ -249,7 +362,7 @@ class _DailyLoggerScreenState extends ConsumerState<DailyLoggerScreen> {
             children: [
               // Header
               const Text(
-                'LOG TODAY',
+                'DAILY LOG',
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
@@ -267,9 +380,87 @@ class _DailyLoggerScreenState extends ConsumerState<DailyLoggerScreen> {
                   letterSpacing: -0.5,
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
 
-              // 1. Morning Weight
+              // Date Navigator Bar
+              Container(
+                margin: const EdgeInsets.only(bottom: 20),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: AppColors.glassBorder),
+                ),
+                child: Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.chevron_left, color: AppColors.emeraldLight, size: 22),
+                      tooltip: 'Ziua anterioară',
+                      onPressed: () => _changeDate(_selectedDate.subtract(const Duration(days: 1))),
+                    ),
+                    Expanded(
+                      child: InkWell(
+                        onTap: _pickDate,
+                        borderRadius: BorderRadius.circular(8),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.calendar_month_outlined, size: 16, color: AppColors.cyan),
+                              const SizedBox(width: 8),
+                              Flexible(
+                                child: Text(
+                                  DateFormat('EEEE, d MMMM yyyy').format(_selectedDate),
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.textPrimary,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: isToday
+                                      ? AppColors.emerald.withValues(alpha: 0.2)
+                                      : (isYesterday ? AppColors.cyan.withValues(alpha: 0.2) : AppColors.surfaceElevated),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  isToday ? 'ASTĂZI' : (isYesterday ? 'IERI' : 'ISTORIC'),
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: isToday
+                                        ? AppColors.emeraldLight
+                                        : (isYesterday ? AppColors.cyanLight : AppColors.textMuted),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: Icon(
+                        Icons.chevron_right,
+                        color: _selectedDate.isBefore(today) ? AppColors.emeraldLight : AppColors.textMuted,
+                        size: 22,
+                      ),
+                      tooltip: 'Ziua următoare',
+                      onPressed: _selectedDate.isBefore(today)
+                          ? () => _changeDate(_selectedDate.add(const Duration(days: 1)))
+                          : null,
+                    ),
+                  ],
+                ),
+              ),
+
+              // 1. Morning Weight Card
               GlassCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -406,17 +597,58 @@ class _DailyLoggerScreenState extends ConsumerState<DailyLoggerScreen> {
                               );
                             }
 
-                            return Column(
-                              children: recipes.map((recipe) {
-                                final recipeKey = recipe.id.isNotEmpty ? recipe.id : (recipe.code ?? recipe.title);
-                                final isConsumed = _consumedMealIds.contains(recipeKey);
+                            // Calculate live macro totals from consumed meals
+                            int consumedKcal = 0;
+                            double consumedProtein = 0;
+                            double consumedCarbs = 0;
+                            double consumedFat = 0;
 
-                                return _buildMealCheckCard(
-                                  recipe: recipe,
-                                  isConsumed: isConsumed,
-                                  onChanged: (_) => _toggleMealConsumption(recipe, recipes),
-                                );
-                              }).toList(),
+                            for (final r in recipes) {
+                              final recipeKey = r.id.isNotEmpty ? r.id : (r.code ?? r.title);
+                              if (_consumedMealIds.contains(recipeKey)) {
+                                consumedKcal += r.calories;
+                                consumedProtein += (r.proteinG ?? 0);
+                                consumedCarbs += (r.carbsG ?? 0);
+                                consumedFat += (r.fatG ?? 0);
+                              }
+                            }
+
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                if (_consumedMealIds.isNotEmpty) ...[
+                                  Container(
+                                    margin: const EdgeInsets.only(bottom: 12),
+                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.surface,
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(color: AppColors.emerald.withValues(alpha: 0.3)),
+                                    ),
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                                      children: [
+                                        _buildMacroPill('Calorii Mese', '$consumedKcal kcal', AppColors.emeraldLight),
+                                        _buildMacroPill('Proteine', '${consumedProtein.toStringAsFixed(1)}g', AppColors.cyanLight),
+                                        _buildMacroPill('Carbohidrați', '${consumedCarbs.toStringAsFixed(1)}g', AppColors.amber),
+                                        _buildMacroPill('Grăsimi', '${consumedFat.toStringAsFixed(1)}g', AppColors.purple),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                                Column(
+                                  children: recipes.map((recipe) {
+                                    final recipeKey = recipe.id.isNotEmpty ? recipe.id : (recipe.code ?? recipe.title);
+                                    final isConsumed = _consumedMealIds.contains(recipeKey);
+
+                                    return _buildMealCheckCard(
+                                      recipe: recipe,
+                                      isConsumed: isConsumed,
+                                      onChanged: (_) => _toggleMealConsumption(recipe, recipes),
+                                    );
+                                  }).toList(),
+                                ),
+                              ],
                             );
                           },
                         ),
@@ -497,72 +729,268 @@ class _DailyLoggerScreenState extends ConsumerState<DailyLoggerScreen> {
               ),
               const SizedBox(height: 16),
 
-              // 4. Energy Balance (Calories)
+              // 4. Energy Balance (Calories & Net Progress)
+              GlassCard(
+                child: Builder(
+                  builder: (context) {
+                    final targetCal = profile?.dailyTargetCalories ?? 2300;
+                    final calIn = int.tryParse(_caloriesInController.text) ?? 0;
+                    final calOut = int.tryParse(_caloriesOutController.text) ?? 0;
+                    final netCal = calIn - calOut;
+                    final remainingCal = targetCal - netCal;
+                    final progressRatio = (targetCal > 0) ? (netCal / targetCal).clamp(0.0, 1.0) : 0.0;
+                    final isOverBudget = netCal > targetCal;
+
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Energy Balance & Net Calories',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+
+                        // Balance Overview Banner
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: AppColors.surface,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: isOverBudget
+                                  ? AppColors.rose.withValues(alpha: 0.4)
+                                  : AppColors.emerald.withValues(alpha: 0.3),
+                            ),
+                          ),
+                          child: Column(
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      const Text('Calorii Net', style: TextStyle(color: AppColors.textSecondary, fontSize: 11)),
+                                      Text(
+                                        '$netCal kcal',
+                                        style: TextStyle(
+                                          color: isOverBudget ? AppColors.rose : AppColors.textPrimary,
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                      Text(
+                                        isOverBudget ? 'Excedent' : 'Rămase în buget',
+                                        style: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
+                                      ),
+                                      Text(
+                                        isOverBudget ? '+${netCal - targetCal} kcal' : '$remainingCal kcal',
+                                        style: TextStyle(
+                                          color: isOverBudget ? AppColors.rose : AppColors.emeraldLight,
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 10),
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(4),
+                                child: LinearProgressIndicator(
+                                  value: progressRatio,
+                                  minHeight: 6,
+                                  backgroundColor: AppColors.surfaceElevated,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    isOverBudget ? AppColors.rose : AppColors.emerald,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Input fields for In and Out
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Row(
+                                    children: [
+                                      Text('Calories In', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                                      SizedBox(width: 4),
+                                      Icon(Icons.auto_awesome, size: 12, color: AppColors.emeraldLight),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 6),
+                                  TextField(
+                                    controller: _caloriesInController,
+                                    keyboardType: TextInputType.number,
+                                    inputFormatters: [
+                                      FilteringTextInputFormatter.digitsOnly,
+                                      LengthLimitingTextInputFormatter(5),
+                                    ],
+                                    onChanged: (_) => setState(() {}),
+                                    decoration: const InputDecoration(suffixText: 'kcal'),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Row(
+                                    children: [
+                                      Text('Calories Out (Burned)', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                                      SizedBox(width: 4),
+                                      Icon(Icons.auto_awesome, size: 12, color: AppColors.cyanLight),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 6),
+                                  TextField(
+                                    controller: _caloriesOutController,
+                                    keyboardType: TextInputType.number,
+                                    inputFormatters: [
+                                      FilteringTextInputFormatter.digitsOnly,
+                                      LengthLimitingTextInputFormatter(5),
+                                    ],
+                                    onChanged: (_) => setState(() {}),
+                                    decoration: const InputDecoration(suffixText: 'kcal'),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // 5. Habits, Adherence & Daily Notes
               GlassCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      'Energy Balance (Calories)',
+                      'Habits, Adherence & Notes',
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.bold,
                         color: AppColors.textPrimary,
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 12),
+                    // Plan adherence selector
                     Row(
                       children: [
                         Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Row(
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(10),
+                            onTap: () => setState(() => _planFollowed = true),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
+                              decoration: BoxDecoration(
+                                color: _planFollowed
+                                    ? AppColors.emerald.withValues(alpha: 0.2)
+                                    : AppColors.surface,
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: _planFollowed ? AppColors.emerald : AppColors.glassBorder,
+                                  width: _planFollowed ? 1.5 : 1.0,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Text('Calories In', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
-                                  SizedBox(width: 4),
-                                  Icon(Icons.auto_awesome, size: 12, color: AppColors.emeraldLight),
+                                  Icon(
+                                    Icons.check_circle_outline,
+                                    size: 16,
+                                    color: _planFollowed ? AppColors.emeraldLight : AppColors.textMuted,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    'Plan Respectat',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: _planFollowed ? FontWeight.bold : FontWeight.w500,
+                                      color: _planFollowed ? AppColors.emeraldLight : AppColors.textSecondary,
+                                    ),
+                                  ),
                                 ],
                               ),
-                              const SizedBox(height: 6),
-                              TextField(
-                                controller: _caloriesInController,
-                                keyboardType: TextInputType.number,
-                                inputFormatters: [
-                                  FilteringTextInputFormatter.digitsOnly,
-                                  LengthLimitingTextInputFormatter(5),
-                                ],
-                                decoration: const InputDecoration(suffixText: 'kcal'),
-                              ),
-                            ],
+                            ),
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 10),
                         Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Row(
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(10),
+                            onTap: () => setState(() => _planFollowed = false),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
+                              decoration: BoxDecoration(
+                                color: !_planFollowed
+                                    ? AppColors.amber.withValues(alpha: 0.2)
+                                    : AppColors.surface,
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: !_planFollowed ? AppColors.amber : AppColors.glassBorder,
+                                  width: !_planFollowed ? 1.5 : 1.0,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Text('Calories Out (Burned)', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
-                                  SizedBox(width: 4),
-                                  Icon(Icons.auto_awesome, size: 12, color: AppColors.cyanLight),
+                                  Icon(
+                                    Icons.warning_amber_rounded,
+                                    size: 16,
+                                    color: !_planFollowed ? AppColors.amber : AppColors.textMuted,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    'Abatere / Deviație',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: !_planFollowed ? FontWeight.bold : FontWeight.w500,
+                                      color: !_planFollowed ? AppColors.amber : AppColors.textSecondary,
+                                    ),
+                                  ),
                                 ],
                               ),
-                              const SizedBox(height: 6),
-                              TextField(
-                                controller: _caloriesOutController,
-                                keyboardType: TextInputType.number,
-                                inputFormatters: [
-                                  FilteringTextInputFormatter.digitsOnly,
-                                  LengthLimitingTextInputFormatter(5),
-                                ],
-                                decoration: const InputDecoration(suffixText: 'kcal'),
-                              ),
-                            ],
+                            ),
                           ),
                         ),
                       ],
+                    ),
+                    const SizedBox(height: 14),
+                    // Daily notes
+                    TextField(
+                      controller: _notesController,
+                      maxLines: 3,
+                      style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
+                      decoration: const InputDecoration(
+                        labelText: 'Note & Observații (opțional)',
+                        hintText: 'Antrenament, greutăți, stare, energie, deviații de la plan...',
+                        prefixIcon: Icon(Icons.notes_rounded, color: AppColors.textSecondary),
+                      ),
                     ),
                   ],
                 ),
@@ -571,7 +999,7 @@ class _DailyLoggerScreenState extends ConsumerState<DailyLoggerScreen> {
 
               // Save Button
               PandaButton(
-                label: 'Save Daily Entry',
+                label: 'Salvează Jurnalul (${DateFormat('d MMM').format(_selectedDate)})',
                 icon: Icons.check_circle_outline,
                 width: double.infinity,
                 isLoading: _isSaving,
@@ -582,6 +1010,31 @@ class _DailyLoggerScreenState extends ConsumerState<DailyLoggerScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildMacroPill(String label, String value, Color color) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          value,
+          style: TextStyle(
+            color: color,
+            fontWeight: FontWeight.bold,
+            fontSize: 13,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          label,
+          style: const TextStyle(
+            color: AppColors.textSecondary,
+            fontSize: 10,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
     );
   }
 

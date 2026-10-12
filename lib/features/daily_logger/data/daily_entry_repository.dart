@@ -23,6 +23,20 @@ class DailyEntryRepository {
         .toList();
   }
 
+  Future<DailyEntry?> fetchEntryByDate(String userId, DateTime date) async {
+    if (_client == null) return null;
+    final dateStr = date.toIso8601String().split('T').first;
+    final res = await _client
+        .from('daily_entries')
+        .select()
+        .eq('user_id', userId)
+        .eq('entry_date', dateStr)
+        .maybeSingle();
+
+    if (res == null) return null;
+    return DailyEntry.fromJson(res);
+  }
+
   Future<void> saveDailyEntry(DailyEntry entry, {List<DailyEntry>? existingEntries}) async {
     if (_client == null) return;
 
