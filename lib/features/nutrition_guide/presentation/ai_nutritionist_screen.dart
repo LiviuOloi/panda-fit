@@ -247,10 +247,18 @@ class _AiNutritionistScreenState extends ConsumerState<AiNutritionistScreen> {
 
     final customApiKey = ref.read(geminiApiKeyProvider).valueOrNull;
 
-    // Generate structured database recipe cards only if specifically requested
-    final shouldGenerateCards = promptText.toLowerCase().contains('carduri retete') ||
-        promptText.toLowerCase().contains('recipe cards') ||
-        promptText.toLowerCase().contains('adauga card');
+    final lowerPrompt = promptText.toLowerCase();
+    final shouldGenerateCards = presetText != null ||
+        lowerPrompt.contains('plan') ||
+        lowerPrompt.contains('meniu') ||
+        lowerPrompt.contains('mese') ||
+        lowerPrompt.contains('retet') ||
+        lowerPrompt.contains('ce mananc') ||
+        lowerPrompt.contains('ce să mănânc') ||
+        lowerPrompt.contains('ce sa mananc') ||
+        lowerPrompt.contains('diet') ||
+        lowerPrompt.contains('card') ||
+        lowerPrompt.contains('recipe');
 
     final history = _messages.map((m) => {'role': m['role'] as String, 'text': m['text'] as String}).toList();
 
@@ -633,38 +641,51 @@ class _AiNutritionistScreenState extends ConsumerState<AiNutritionistScreen> {
   }
 
   Widget _buildMessageRecipesSection(List<MealRecipe> recipes) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8.0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Row(
-                children: [
-                  Icon(Icons.restaurant_menu, color: AppColors.emeraldLight, size: 18),
-                  SizedBox(width: 8),
-                  Text(
-                    'Mese Propuse de Panda AI (Gramaje Crude/Uscate)',
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
-                  ),
-                ],
-              ),
-              if (recipes.length > 1)
-                TextButton.icon(
-                  icon: const Icon(Icons.bookmark_add, size: 16, color: AppColors.cyanLight),
-                  label: const Text(
-                    'Salvează Tot Planul',
-                    style: TextStyle(color: AppColors.cyanLight, fontSize: 12, fontWeight: FontWeight.bold),
-                  ),
-                  onPressed: () => _saveAllRecipesToUserMenu(recipes),
+    return Container(
+      margin: const EdgeInsets.only(top: 8, bottom: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            margin: const EdgeInsets.only(bottom: 12),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceElevated,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.emerald.withValues(alpha: 0.4)),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.restaurant_menu, color: AppColors.emeraldLight, size: 18),
+                    const SizedBox(width: 8),
+                    Text(
+                      '${recipes.length} Mese Configurate',
+                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                    ),
+                  ],
                 ),
-            ],
+                if (recipes.length > 1)
+                  TextButton.icon(
+                    style: TextButton.styleFrom(
+                      backgroundColor: AppColors.emerald.withValues(alpha: 0.2),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    ),
+                    icon: const Icon(Icons.bookmark_add, size: 16, color: AppColors.emeraldLight),
+                    label: const Text(
+                      'Salvează Tot Planul',
+                      style: TextStyle(color: AppColors.emeraldLight, fontSize: 12, fontWeight: FontWeight.bold),
+                    ),
+                    onPressed: () => _saveAllRecipesToUserMenu(recipes),
+                  ),
+              ],
+            ),
           ),
-        ),
-        ...recipes.map((r) => _buildRecipeProposalCard(r)),
-      ],
+          ...recipes.map((r) => _buildRecipeProposalCard(r)),
+        ],
+      ),
     );
   }
 
