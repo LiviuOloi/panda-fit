@@ -211,56 +211,6 @@ class NutritionGuideScreen extends ConsumerWidget {
                   ),
                 ),
 
-              // AI Nutritionist Feature Banner
-              GlassCard(
-                borderColor: AppColors.emerald.withValues(alpha: 0.5),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: AppColors.emerald.withValues(alpha: 0.2),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(Icons.auto_awesome, color: AppColors.emeraldLight, size: 22),
-                        ),
-                        const SizedBox(width: 12),
-                        const Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Panda AI Nutritionist',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.textPrimary,
-                                ),
-                              ),
-                              Text(
-                                'Tailored meal plans adapted to your biometrics & preferences',
-                                style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    PandaButton(
-                      label: 'Open Panda AI Nutritionist',
-                      icon: Icons.chat_bubble_outline,
-                      width: double.infinity,
-                      onPressed: () => _openAiNutritionist(context, profile, activeMission),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 20),
-
               // Weighing Protocol Card
               GlassCard(
                 borderColor: AppColors.cyan.withValues(alpha: 0.4),
@@ -305,6 +255,12 @@ class NutritionGuideScreen extends ConsumerWidget {
                   ),
                   Row(
                     children: [
+                      if (recipesAsync.valueOrNull != null && recipesAsync.valueOrNull!.isNotEmpty)
+                        TextButton.icon(
+                          onPressed: () => _openAiNutritionist(context, profile, activeMission),
+                          icon: const Icon(Icons.auto_awesome, size: 16, color: AppColors.cyanLight),
+                          label: const Text('Panda AI', style: TextStyle(color: AppColors.cyanLight, fontWeight: FontWeight.bold)),
+                        ),
                       TextButton.icon(
                         onPressed: () => _openCustomRecipeDialog(context),
                         icon: const Icon(Icons.add, size: 18, color: AppColors.emerald),
