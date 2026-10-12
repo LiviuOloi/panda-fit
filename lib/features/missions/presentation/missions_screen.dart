@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/utils/calculation_engine.dart';
 import '../../../../core/widgets/glass_card.dart';
 import '../../../../core/widgets/panda_button.dart';
 import '../../auth/presentation/auth_controller.dart';
@@ -35,6 +37,29 @@ class MissionsScreen extends ConsumerWidget {
     final isAccomplished = activeMission != null && activeMission.checkAccomplishment(currentWeight);
     final progress = activeMission != null ? activeMission.progress(currentWeight) : 0.0;
     final isCutting = activeMission?.missionType == MissionType.cutting;
+
+    // Calculate weekly pace and mission ETA
+    final chronoWeights = entries.reversed
+        .map((e) => e.rollingAvg7Days ?? e.weight)
+        .whereType<double>()
+        .toList();
+    final chronoDates = entries.reversed
+        .where((e) => (e.rollingAvg7Days ?? e.weight) != null)
+        .map((e) => e.entryDate)
+        .toList();
+    final weeklyRate = CalculationEngine.calculateWeeklyRate(
+      weights: chronoWeights,
+      dates: chronoDates,
+    );
+
+    final etaEstimate = (activeMission != null && !isAccomplished)
+        ? CalculationEngine.calculateMissionETA(
+            missionType: activeMission.missionType.name,
+            currentWeight: currentWeight,
+            targetWeight: activeMission.targetWeight,
+            observedWeeklyPace: weeklyRate,
+          )
+        : null;
 
     return Scaffold(
       body: SafeArea(
@@ -99,7 +124,7 @@ class MissionsScreen extends ConsumerWidget {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              'You reached ${currentWeight.toStringAsFixed(1)} kg, strictly surpassing the ${activeMission.targetWeight} kg milestone.',
+                              'Ai atins ${currentWeight.toStringAsFixed(1)} kg, depășind strict borna de ${activeMission.targetWeight} kg!',
                               style: const TextStyle(color: AppColors.textPrimary, fontSize: 12),
                             ),
                           ],
@@ -157,7 +182,7 @@ class MissionsScreen extends ConsumerWidget {
                     Text(
                       activeMission != null
                           ? (isCutting ? 'Cutting Phase — Sustainable Fat Loss' : 'Bulking Phase — Lean Muscle Mass')
-                          : 'No active mission configured',
+                          : 'Nicio misiune activă configurată',
                       style: const TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
@@ -167,8 +192,8 @@ class MissionsScreen extends ConsumerWidget {
                     const SizedBox(height: 6),
                     Text(
                       activeMission != null
-                          ? 'Mission Goal: Reach strictly ${isCutting ? "<" : ">"} ${activeMission.targetWeight} kg to trigger accomplishment.'
-                          : 'Configure your first mission to track milestone progress.',
+                          ? 'Țintă: Atinge strict ${isCutting ? "<" : ">"} ${activeMission.targetWeight} kg pentru a bifa misiunea.'
+                          : 'Configurează prima ta misiune pentru a urmări evoluția.',
                       style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
                     ),
                     const SizedBox(height: 20),
@@ -195,6 +220,91 @@ class MissionsScreen extends ConsumerWidget {
                         ),
                       ],
                     ),
+
+                    // ETA Countdown & Projected Milestone Banner
+                    if (etaEstimate != null) ...[
+                      const SizedBox(height: 16),
+                      Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: AppColors.surface,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppColors.cyan.withValues(alpha: 0.3)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Row(
+                              children: [
+                                Icon(Icons.flag_circle_outlined, size: 16, color: AppColors.cyan),
+                                SizedBox(width: 6),
+                                Text(
+                                  'PROIECȚIE & TIMP ESTIMAT (ETA)',
+                                  style: TextStyle(
+                                    color: AppColors.cyanLight,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 0.8,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text('Dată Țintă Estimată', style: TextStyle(color: AppColors.textSecondary, fontSize: 11)),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      DateFormat('d MMMM yyyy').format(etaEstimate.estimatedTargetDate),
+                                      style: const TextStyle(
+                                        color: AppColors.textPrimary,
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    const Text('Timp Rămas', style: TextStyle(color: AppColors.textSecondary, fontSize: 11)),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      '~${etaEstimate.daysRemaining} zile (${etaEstimate.weeksRemaining} săpt.)',
+                                      style: const TextStyle(
+                                        color: AppColors.emeraldLight,
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'Rămas: ${etaEstimate.remainingKg} kg',
+                                  style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
+                                ),
+                                Text(
+                                  weeklyRate != null
+                                      ? 'Calculat la ritmul tău: ${etaEstimate.weeklyPaceKg} kg/săpt'
+                                      : 'Ritm de referință sănătos: ${etaEstimate.weeklyPaceKg} kg/săpt',
+                                  style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -202,7 +312,7 @@ class MissionsScreen extends ConsumerWidget {
 
               // Configure New Mission Button
               PandaButton(
-                label: 'Configure Next Mission',
+                label: isAccomplished ? 'Configurează Următoarea Misiune' : 'Ajustează / Schimbă Misiunea',
                 icon: isAccomplished ? Icons.rocket_launch : Icons.flag_outlined,
                 variant: isAccomplished ? PandaButtonVariant.primary : PandaButtonVariant.secondary,
                 width: double.infinity,
@@ -228,7 +338,7 @@ class MissionsScreen extends ConsumerWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Strict Inequality Invariant',
+                            'Regula Invariantului Strict',
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 14,
@@ -237,7 +347,7 @@ class MissionsScreen extends ConsumerWidget {
                           ),
                           SizedBox(height: 4),
                           Text(
-                            'A cutting mission requires weighing strictly less than the target weight (e.g. \u2264 94.9 kg for a 95.0 kg target). Tying the target does not trigger accomplishment.',
+                            'O misiune de cutting necesită depășirea strictă a greutății țintă (ex. ≤ 94.9 kg pentru o țintă de 95.0 kg). Egalarea țintei nu declanșează atingerea misiunii.',
                             style: TextStyle(
                               fontSize: 12,
                               color: AppColors.textSecondary,
@@ -291,7 +401,7 @@ class MissionsScreen extends ConsumerWidget {
                           SizedBox(width: 10),
                           Expanded(
                             child: Text(
-                              'No archived missions yet. Complete your current phase to record milestones.',
+                              'Nicio misiune arhivată încă. Finalizează faza curentă pentru a înregistra milestone-uri.',
                               style: TextStyle(color: AppColors.textMuted, fontSize: 12),
                             ),
                           ),
@@ -304,61 +414,90 @@ class MissionsScreen extends ConsumerWidget {
                     children: pastMissions.map((m) {
                       final isCut = m.missionType == MissionType.cutting;
                       final isArchivedAccomplished = m.status == MissionStatus.accomplished;
+                      final durationDays = m.achievedAt != null
+                          ? m.achievedAt!.difference(m.startedAt).inDays.abs()
+                          : DateTime.now().difference(m.startedAt).inDays.abs();
+                      final totalDelta = CalculationEngine.roundWeight(m.targetWeight - m.missionStartWeight);
 
                       return Container(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        padding: const EdgeInsets.all(12),
+                        margin: const EdgeInsets.only(bottom: 10),
+                        padding: const EdgeInsets.all(14),
                         decoration: BoxDecoration(
                           color: AppColors.surfaceElevated,
-                          borderRadius: BorderRadius.circular(10),
+                          borderRadius: BorderRadius.circular(12),
                           border: Border.all(
                             color: isArchivedAccomplished
                                 ? AppColors.emerald.withValues(alpha: 0.4)
                                 : AppColors.glassBorder,
+                            width: isArchivedAccomplished ? 1.5 : 1.0,
                           ),
                         ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Text(isCut ? '✂️' : '🦁', style: const TextStyle(fontSize: 18)),
-                                const SizedBox(width: 10),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                Row(
                                   children: [
-                                    Text(
-                                      '${isCut ? "Cut" : "Bulk"}: ${m.missionStartWeight} kg → ${m.targetWeight} kg',
-                                      style: const TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.bold,
-                                        color: AppColors.textPrimary,
-                                      ),
-                                    ),
-                                    Text(
-                                      'Started: ${m.startedAt.toIso8601String().split("T").first}',
-                                      style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+                                    Text(isArchivedAccomplished ? '🏆' : (isCut ? '✂️' : '🦁'), style: const TextStyle(fontSize: 20)),
+                                    const SizedBox(width: 10),
+                                    Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          '${isCut ? "Cutting" : "Bulking"}: ${m.missionStartWeight} kg → ${m.targetWeight} kg',
+                                          style: const TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.bold,
+                                            color: AppColors.textPrimary,
+                                          ),
+                                        ),
+                                        Text(
+                                          '${totalDelta > 0 ? "+" : ""}$totalDelta kg · Durată: $durationDays ${durationDays == 1 ? "zi" : "zile"}',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            color: isArchivedAccomplished ? AppColors.emeraldLight : AppColors.textMuted,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ],
                                 ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: isArchivedAccomplished
+                                        ? AppColors.emerald.withValues(alpha: 0.2)
+                                        : AppColors.surface,
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    isArchivedAccomplished ? 'REALIZAT' : m.status.name.toUpperCase(),
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                      color: isArchivedAccomplished ? AppColors.emeraldLight : AppColors.textMuted,
+                                    ),
+                                  ),
+                                ),
                               ],
                             ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                              decoration: BoxDecoration(
-                                color: isArchivedAccomplished
-                                    ? AppColors.emerald.withValues(alpha: 0.2)
-                                    : AppColors.surface,
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Text(
-                                m.status.name.toUpperCase(),
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                  color: isArchivedAccomplished ? AppColors.emeraldLight : AppColors.textMuted,
+                            const SizedBox(height: 8),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'Start: ${DateFormat("d MMM yyyy").format(m.startedAt)}',
+                                  style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
                                 ),
-                              ),
+                                if (m.achievedAt != null)
+                                  Text(
+                                    'Atins: ${DateFormat("d MMM yyyy").format(m.achievedAt!)}',
+                                    style: const TextStyle(fontSize: 11, color: AppColors.emeraldLight, fontWeight: FontWeight.w600),
+                                  ),
+                              ],
                             ),
                           ],
                         ),

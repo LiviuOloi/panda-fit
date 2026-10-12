@@ -206,5 +206,79 @@ class CalculationEngine {
     final followedCount = planFollowedList.where((p) => p).length;
     return ((followedCount / planFollowedList.length) * 100).round();
   }
+
+  /// Calculates ETA estimate for completing an active mission based on current weight,
+  /// strict target threshold, and weekly pace (default: 0.5 kg/week sustainable pace).
+  static MissionEtaEstimate calculateMissionETA({
+    required String missionType, // 'CUTTING' or 'BULKING'
+    required double currentWeight,
+    required double targetWeight,
+    double? observedWeeklyPace,
+    DateTime? referenceDate,
+  }) {
+    final now = referenceDate ?? DateTime.now();
+    final isAccomplished = isMissionAccomplished(
+      missionType: missionType,
+      currentWeight: currentWeight,
+      targetWeight: targetWeight,
+    );
+
+    if (isAccomplished) {
+      return MissionEtaEstimate(
+        remainingKg: 0.0,
+        daysRemaining: 0,
+        weeksRemaining: 0.0,
+        estimatedTargetDate: now,
+        weeklyPaceKg: 0.0,
+        isAlreadyAccomplished: true,
+      );
+    }
+
+    // Default healthy sustainable pace is 0.5 kg/week
+    double pace = 0.5;
+    if (observedWeeklyPace != null && observedWeeklyPace.abs() >= 0.1) {
+      // Clamp between 0.2 and 1.5 kg/week to keep estimations realistic
+      pace = observedWeeklyPace.abs().clamp(0.2, 1.5);
+    }
+
+    double remainingKg;
+    if (missionType.toUpperCase() == 'CUTTING') {
+      remainingKg = roundWeight(math.max(0.1, currentWeight - targetWeight + 0.1));
+    } else {
+      remainingKg = roundWeight(math.max(0.1, targetWeight - currentWeight + 0.1));
+    }
+
+    final weeks = remainingKg / pace;
+    final days = math.max(1, (weeks * 7).round());
+    final targetDate = now.add(Duration(days: days));
+
+    return MissionEtaEstimate(
+      remainingKg: remainingKg,
+      daysRemaining: days,
+      weeksRemaining: roundWeight(weeks),
+      estimatedTargetDate: targetDate,
+      weeklyPaceKg: roundWeight(pace),
+      isAlreadyAccomplished: false,
+    );
+  }
+}
+
+/// Domain model for active mission ETA milestone calculations
+class MissionEtaEstimate {
+  final double remainingKg;
+  final int daysRemaining;
+  final double weeksRemaining;
+  final DateTime estimatedTargetDate;
+  final double weeklyPaceKg;
+  final bool isAlreadyAccomplished;
+
+  const MissionEtaEstimate({
+    required this.remainingKg,
+    required this.daysRemaining,
+    required this.weeksRemaining,
+    required this.estimatedTargetDate,
+    required this.weeklyPaceKg,
+    required this.isAlreadyAccomplished,
+  });
 }
 

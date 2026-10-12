@@ -219,6 +219,35 @@ void main() {
       expect(CalculationEngine.calculateDietAdherence([]), 100);
       expect(CalculationEngine.calculateDietAdherence([true, true]), 100);
     });
+
+    test('Mission ETA calculation predicts days and date accurately', () {
+      final refDate = DateTime(2026, 10, 1);
+
+      // Cutting: current 98.0 kg, target 95.0 kg => needs < 95.0 kg (94.9 kg) => 3.1 kg
+      // pace 0.5 kg/week => 3.1 / 0.5 = 6.2 weeks => ~43 days
+      final eta = CalculationEngine.calculateMissionETA(
+        missionType: 'CUTTING',
+        currentWeight: 98.0,
+        targetWeight: 95.0,
+        observedWeeklyPace: 0.5,
+        referenceDate: refDate,
+      );
+      expect(eta.isAlreadyAccomplished, false);
+      expect(eta.remainingKg, 3.1);
+      expect(eta.daysRemaining, 43);
+      expect(eta.estimatedTargetDate, refDate.add(const Duration(days: 43)));
+
+      // If already accomplished (e.g. 94.8 kg for 95.0 kg target)
+      final accomplishedEta = CalculationEngine.calculateMissionETA(
+        missionType: 'CUTTING',
+        currentWeight: 94.8,
+        targetWeight: 95.0,
+        referenceDate: refDate,
+      );
+      expect(accomplishedEta.isAlreadyAccomplished, true);
+      expect(accomplishedEta.daysRemaining, 0);
+      expect(accomplishedEta.remainingKg, 0.0);
+    });
   });
 }
 
