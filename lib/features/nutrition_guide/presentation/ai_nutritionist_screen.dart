@@ -247,18 +247,62 @@ class _AiNutritionistScreenState extends ConsumerState<AiNutritionistScreen> {
 
     final customApiKey = ref.read(geminiApiKeyProvider).valueOrNull;
 
-    final lowerPrompt = promptText.toLowerCase();
-    final shouldGenerateCards = presetText != null ||
-        lowerPrompt.contains('plan') ||
-        lowerPrompt.contains('meniu') ||
-        lowerPrompt.contains('mese') ||
-        lowerPrompt.contains('retet') ||
-        lowerPrompt.contains('ce mananc') ||
-        lowerPrompt.contains('ce să mănânc') ||
-        lowerPrompt.contains('ce sa mananc') ||
-        lowerPrompt.contains('diet') ||
-        lowerPrompt.contains('card') ||
-        lowerPrompt.contains('recipe');
+    final lowerPrompt = promptText.toLowerCase().trim();
+    final isGratitudeOrGreetingOnly = (lowerPrompt == 'mersi' ||
+            lowerPrompt == 'multumesc' ||
+            lowerPrompt == 'mulțumesc' ||
+            lowerPrompt == 'super' ||
+            lowerPrompt == 'top' ||
+            lowerPrompt == 'ok' ||
+            lowerPrompt == 'bine' ||
+            lowerPrompt == 'salut' ||
+            lowerPrompt == 'buna' ||
+            lowerPrompt == 'bună' ||
+            lowerPrompt == 'cum esti' ||
+            lowerPrompt == 'cum ești' ||
+            lowerPrompt == 'ce faci') &&
+        imageBytesToSend == null;
+
+    final shouldGenerateCards = !isGratitudeOrGreetingOnly &&
+        (presetText != null ||
+            AiNutritionService.isQuickOrSingleMealQuery(lowerPrompt) ||
+            lowerPrompt.contains('plan') ||
+            lowerPrompt.contains('meniu') ||
+            lowerPrompt.contains('masa') ||
+            lowerPrompt.contains('masă') ||
+            lowerPrompt.contains('mese') ||
+            lowerPrompt.contains('retet') ||
+            lowerPrompt.contains('rețet') ||
+            lowerPrompt.contains('mancare') ||
+            lowerPrompt.contains('mâncare') ||
+            lowerPrompt.contains('ce mananc') ||
+            lowerPrompt.contains('ce să mănânc') ||
+            lowerPrompt.contains('ce sa mananc') ||
+            lowerPrompt.contains('recomand') ||
+            lowerPrompt.contains('rapid') ||
+            lowerPrompt.contains('repede') ||
+            lowerPrompt.contains('pranz') ||
+            lowerPrompt.contains('prânz') ||
+            lowerPrompt.contains('cina') ||
+            lowerPrompt.contains('cină') ||
+            lowerPrompt.contains('dejun') ||
+            lowerPrompt.contains('gustar') ||
+            lowerPrompt.contains('snack') ||
+            lowerPrompt.contains('pui') ||
+            lowerPrompt.contains('somon') ||
+            lowerPrompt.contains('peste') ||
+            lowerPrompt.contains('pește') ||
+            lowerPrompt.contains('vita') ||
+            lowerPrompt.contains('vită') ||
+            lowerPrompt.contains('oua') ||
+            lowerPrompt.contains('ouă') ||
+            lowerPrompt.contains('gatit') ||
+            lowerPrompt.contains('gătit') ||
+            lowerPrompt.contains('diet') ||
+            lowerPrompt.contains('card') ||
+            lowerPrompt.contains('meal') ||
+            lowerPrompt.contains('recipe') ||
+            imageBytesToSend != null);
 
     final history = _messages.map((m) => {'role': m['role'] as String, 'text': m['text'] as String}).toList();
 
@@ -662,7 +706,7 @@ class _AiNutritionistScreenState extends ConsumerState<AiNutritionistScreen> {
                     const Icon(Icons.restaurant_menu, color: AppColors.emeraldLight, size: 18),
                     const SizedBox(width: 8),
                     Text(
-                      '${recipes.length} Mese Configurate',
+                      recipes.length == 1 ? '1 Masă Recomandată' : '${recipes.length} Mese Configurate',
                       style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
                     ),
                   ],
