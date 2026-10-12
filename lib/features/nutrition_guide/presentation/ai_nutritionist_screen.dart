@@ -492,6 +492,13 @@ class _AiNutritionistScreenState extends ConsumerState<AiNutritionistScreen> {
                           .toList()
                       : <MealRecipe>[];
 
+                  if (!isUser && recipes.isNotEmpty) {
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: _buildMessageRecipesSection(recipes),
+                    );
+                  }
+
                   return Column(
                     crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
                     children: [
@@ -521,40 +528,18 @@ class _AiNutritionistScreenState extends ConsumerState<AiNutritionistScreen> {
                                 ),
                                 const SizedBox(height: 10),
                               ],
-                              () {
-                                String displayText = msg['text'] as String;
-                                if (recipes.isNotEmpty && !isUser) {
-                                  final mealListMarker = RegExp(r'(🍳\s*(\*\*)?1\.|🍗\s*(\*\*)?3\.|🍽️\s*(\*\*)?Somon|🥞\s*(\*\*)?Omletă)', caseSensitive: false);
-                                  if (mealListMarker.hasMatch(displayText)) {
-                                    final match = mealListMarker.firstMatch(displayText);
-                                    if (match != null && match.start > 0) {
-                                      var cleaned = displayText.substring(0, match.start).trim();
-                                      if (cleaned.endsWith('---')) {
-                                        cleaned = cleaned.substring(0, cleaned.length - 3).trim();
-                                      }
-                                      if (cleaned.isNotEmpty) {
-                                        displayText = '$cleaned\n\n👇 **Mesele sunt configurate pe cardurile interactive de mai jos:**';
-                                      }
-                                    }
-                                  }
-                                }
-                                return Text(
-                                  displayText,
-                                  style: TextStyle(
-                                    color: isUser ? Colors.white : AppColors.textPrimary,
-                                    fontSize: 14,
-                                    height: 1.4,
-                                  ),
-                                );
-                              }(),
+                              Text(
+                                msg['text'] as String,
+                                style: TextStyle(
+                                  color: isUser ? Colors.white : AppColors.textPrimary,
+                                  fontSize: 14,
+                                  height: 1.4,
+                                ),
+                              ),
                             ],
                           ),
                         ),
                       ),
-                      if (recipes.isNotEmpty) ...[
-                        _buildMessageRecipesSection(recipes),
-                        const SizedBox(height: 12),
-                      ],
                     ],
                   );
                 },
