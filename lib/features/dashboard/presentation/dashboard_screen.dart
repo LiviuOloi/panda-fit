@@ -4,12 +4,25 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../../core/utils/calculation_engine.dart';
 import '../../../../core/widgets/glass_card.dart';
 import '../../../../core/widgets/panda_button.dart';
+import '../../daily_logger/domain/daily_entry_model.dart';
 import '../../missions/domain/mission_model.dart';
 import '../../profile/presentation/profile_controller.dart';
 import '../widgets/metric_summary_card.dart';
 import '../widgets/weight_progress_chart.dart';
 
-class DashboardScreen extends ConsumerWidget {
+enum DashboardTimeRange {
+  days7('7Z', 7),
+  days30('30Z', 30),
+  days90('90Z', 90),
+  all('TOT', null);
+
+  final String label;
+  final int? days;
+
+  const DashboardTimeRange(this.label, this.days);
+}
+
+class DashboardScreen extends ConsumerStatefulWidget {
   final VoidCallback onQuickLogPressed;
 
   const DashboardScreen({
@@ -18,7 +31,14 @@ class DashboardScreen extends ConsumerWidget {
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends ConsumerState<DashboardScreen> {
+  DashboardTimeRange _selectedTimeRange = DashboardTimeRange.days30;
+
+  @override
+  Widget build(BuildContext context) {
     final profileAsync = ref.watch(userProfileProvider);
     final missionAsync = ref.watch(activeMissionProvider);
     final entriesAsync = ref.watch(dailyEntriesProvider);
@@ -46,9 +66,31 @@ class DashboardScreen extends ConsumerWidget {
       caloriesOut: latestCaloriesOut,
     );
 
-    // Build chart data points from real chronological history
+    final isCutting = activeMission?.missionType == MissionType.cutting;
+
+    // Filter entries by selected timeframe
+    final List<DailyEntry> filteredEntries;
+    if (_selectedTimeRange.days != null && entries.isNotEmpty) {
+      final now = DateTime.now();
+      final cutoffDate = DateTime(now.year, now.month, now.day)
+          .subtract(Duration(days: _selectedTimeRange.days! - 1));
+      final matching = entries.where((e) => !e.entryDate.isBefore(cutoffDate)).toList();
+      filteredEntries = matching.isNotEmpty ? matching : entries.take(_selectedTimeRange.days!).toList();
+    } else {
+      filteredEntries = entries;
+    }
+
+    // Build chart data points from chronological filtered entries
     final List<WeightChartDataPoint> chartPoints;
-    if (entries.isNotEmpty) {
+    if (filteredEntries.isNotEmpty) {
+      chartPoints = filteredEntries.reversed.map((e) {
+        return WeightChartDataPoint(
+          date: e.entryDate,
+          rawWeight: e.weight,
+          movingAvg7Days: e.rollingAvg7Days,
+        );
+      }).toList();
+    } else if (entries.isNotEmpty) {
       chartPoints = entries.reversed.map((e) {
         return WeightChartDataPoint(
           date: e.entryDate,
@@ -66,7 +108,26 @@ class DashboardScreen extends ConsumerWidget {
       ];
     }
 
-    final isCutting = activeMission?.missionType == MissionType.cutting;
+    // Analytical Insights Calculations
+    final allDates = entries.map((e) => e.entryDate).toList();
+    final streakDays = CalculationEngine.calculateStreak(allDates);
+    final adherenceList = filteredEntries.map((e) => e.planFollowed).toList();
+    final adherencePercent = CalculationEngine.calculateDietAdherence(adherenceList);
+
+    // Weekly rate from chronological points in the timeframe (or all)
+    final rateEntries = filteredEntries.length >= 2 ? filteredEntries : entries;
+    final chronoWeights = rateEntries.reversed
+        .map((e) => e.rollingAvg7Days ?? e.weight)
+        .whereType<double>()
+        .toList();
+    final chronoDates = rateEntries.reversed
+        .where((e) => (e.rollingAvg7Days ?? e.weight) != null)
+        .map((e) => e.entryDate)
+        .toList();
+    final weeklyRate = CalculationEngine.calculateWeeklyRate(
+      weights: chronoWeights,
+      dates: chronoDates,
+    );
 
     return Scaffold(
       body: SafeArea(
@@ -119,7 +180,7 @@ class DashboardScreen extends ConsumerWidget {
                   PandaButton(
                     label: 'Quick Log',
                     icon: Icons.add,
-                    onPressed: onQuickLogPressed,
+                    onPressed: widget.onQuickLogPressed,
                   ),
                 ],
               ),
@@ -246,21 +307,141 @@ class DashboardScreen extends ConsumerWidget {
                   );
                 },
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
 
-              // 7-Day Moving Average vs Raw Chart
+              // Analytics & Consistency Insights Cards
+              GlassCard(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                child: Row(
+                  children: [
+                    // 1. Weekly Rate
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Row(
+                            children: [
+                              Icon(Icons.speed_rounded, size: 14, color: AppColors.cyanLight),
+                              SizedBox(width: 4),
+                              Text(
+                                'Viteză Trend',
+                                style: TextStyle(color: AppColors.textSecondary, fontSize: 11, fontWeight: FontWeight.w600),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            weeklyRate != null
+                                ? '${weeklyRate >= 0 ? "+" : ""}$weeklyRate kg/săpt'
+                                : (entries.length < 2 ? 'Calcul după 2+ zile' : 'Stabil'),
+                            style: TextStyle(
+                              color: weeklyRate != null
+                                  ? (weeklyRate < 0 ? AppColors.emeraldLight : AppColors.cyanLight)
+                                  : AppColors.textPrimary,
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            weeklyRate != null && weeklyRate.abs() <= 1.0
+                                ? 'Pace sustenabil'
+                                : (weeklyRate != null ? 'Pace accelerat' : 'Tendință netă'),
+                            style: const TextStyle(color: AppColors.textMuted, fontSize: 10),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(width: 1, height: 42, color: AppColors.glassBorder),
+                    const SizedBox(width: 12),
+
+                    // 2. Logging Streak
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Row(
+                            children: [
+                              Icon(Icons.local_fire_department_rounded, size: 14, color: AppColors.amber),
+                              SizedBox(width: 4),
+                              Text(
+                                'Streak Activ',
+                                style: TextStyle(color: AppColors.textSecondary, fontSize: 11, fontWeight: FontWeight.w600),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            streakDays > 0 ? '$streakDays ${streakDays == 1 ? "zi" : "zile"}' : '0 zile',
+                            style: const TextStyle(
+                              color: AppColors.amber,
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            streakDays >= 3 ? 'Consistență excelentă' : 'Loghează zilnic',
+                            style: const TextStyle(color: AppColors.textMuted, fontSize: 10),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(width: 1, height: 42, color: AppColors.glassBorder),
+                    const SizedBox(width: 12),
+
+                    // 3. Diet Adherence
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Row(
+                            children: [
+                              Icon(Icons.verified_rounded, size: 14, color: AppColors.emeraldLight),
+                              SizedBox(width: 4),
+                              Text(
+                                'Aderență Plan',
+                                style: TextStyle(color: AppColors.textSecondary, fontSize: 11, fontWeight: FontWeight.w600),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            '$adherencePercent%',
+                            style: TextStyle(
+                              color: adherencePercent >= 80 ? AppColors.emeraldLight : AppColors.amber,
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            adherencePercent >= 85 ? 'Respectat riguros' : 'Deviații notate',
+                            style: const TextStyle(color: AppColors.textMuted, fontSize: 10),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // 7-Day Moving Average vs Raw Chart with Time Range Filter
               GlassCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const Text(
-                              'Weight Trend & Rolling MA (7D)',
+                              'Weight Trend & Rolling MA',
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
@@ -269,7 +450,7 @@ class DashboardScreen extends ConsumerWidget {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              'Eliminates water noise and glycogen spikes',
+                              'Media 7Z filtrează apa & retenția de sodiu',
                               style: TextStyle(
                                 fontSize: 12,
                                 color: AppColors.textSecondary.withValues(alpha: 0.8),
@@ -277,16 +458,64 @@ class DashboardScreen extends ConsumerWidget {
                             ),
                           ],
                         ),
-                        Row(
-                          children: [
-                            _buildLegendItem('Raw', AppColors.cyan),
-                            const SizedBox(width: 12),
-                            _buildLegendItem('7d MA', AppColors.emerald),
-                          ],
+                        // Timeframe Pill Selector
+                        Container(
+                          padding: const EdgeInsets.all(3),
+                          decoration: BoxDecoration(
+                            color: AppColors.surface,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: AppColors.glassBorder),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: DashboardTimeRange.values.map((range) {
+                              final isSelected = _selectedTimeRange == range;
+                              return InkWell(
+                                onTap: () => setState(() => _selectedTimeRange = range),
+                                borderRadius: BorderRadius.circular(6),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: isSelected
+                                        ? AppColors.emerald.withValues(alpha: 0.25)
+                                        : Colors.transparent,
+                                    borderRadius: BorderRadius.circular(6),
+                                    border: isSelected
+                                        ? Border.all(color: AppColors.emerald.withValues(alpha: 0.5))
+                                        : null,
+                                  ),
+                                  child: Text(
+                                    range.label,
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                                      color: isSelected ? AppColors.emeraldLight : AppColors.textSecondary,
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                          ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 12),
+
+                    // Legend Row
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        _buildLegendItem('Cântar Zilnic', AppColors.cyan),
+                        const SizedBox(width: 14),
+                        _buildLegendItem('Medie 7Z (Trend Real)', AppColors.emerald),
+                        if (activeMission != null) ...[
+                          const SizedBox(width: 14),
+                          _buildLegendItem('Țintă Misiune', AppColors.amber),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+
                     WeightProgressChart(
                       points: chartPoints,
                       targetWeight: targetWeight,

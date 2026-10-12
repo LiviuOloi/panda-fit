@@ -151,5 +151,60 @@ class CalculationEngine {
     }
     return maintenance;
   }
+
+  /// Calculates the weekly rate of weight change (kg / week) based on weights across a timeframe.
+  /// Positive = gaining, Negative = losing.
+  static double? calculateWeeklyRate({
+    required List<double> weights,
+    required List<DateTime> dates,
+  }) {
+    if (weights.length < 2 || dates.length < 2) return null;
+    final firstWeight = weights.first;
+    final lastWeight = weights.last;
+    final firstDate = dates.first;
+    final lastDate = dates.last;
+
+    final days = lastDate.difference(firstDate).inDays.abs();
+    if (days < 1) return null;
+
+    final totalDelta = lastWeight - firstWeight;
+    final ratePerDay = totalDelta / days;
+    return roundWeight(ratePerDay * 7.0);
+  }
+
+  /// Calculates the active consecutive log streak in days up to today or yesterday
+  static int calculateStreak(List<DateTime> loggedDates, [DateTime? referenceDate]) {
+    if (loggedDates.isEmpty) return 0;
+    final now = referenceDate ?? DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = today.subtract(const Duration(days: 1));
+
+    final normalizedSet = loggedDates
+        .map((d) => DateTime(d.year, d.month, d.day))
+        .toSet();
+
+    DateTime checkDate;
+    if (normalizedSet.contains(today)) {
+      checkDate = today;
+    } else if (normalizedSet.contains(yesterday)) {
+      checkDate = yesterday;
+    } else {
+      return 0;
+    }
+
+    int streak = 0;
+    while (normalizedSet.contains(checkDate)) {
+      streak++;
+      checkDate = checkDate.subtract(const Duration(days: 1));
+    }
+    return streak;
+  }
+
+  /// Calculates diet adherence percentage (0% to 100%)
+  static int calculateDietAdherence(List<bool> planFollowedList) {
+    if (planFollowedList.isEmpty) return 100;
+    final followedCount = planFollowedList.where((p) => p).length;
+    return ((followedCount / planFollowedList.length) * 100).round();
+  }
 }
 

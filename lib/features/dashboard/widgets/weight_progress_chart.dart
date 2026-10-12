@@ -1,5 +1,6 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../../../../core/constants/app_colors.dart';
 
 class WeightChartDataPoint {
@@ -32,19 +33,38 @@ class WeightProgressChart extends StatelessWidget {
       return Container(
         height: 240,
         alignment: Alignment.center,
-        child: const Text(
-          'No weigh-in data logged yet. Add your morning weight to visualize trends.',
-          style: TextStyle(color: AppColors.textMuted, fontSize: 13),
-          textAlign: TextAlign.center,
+        child: const Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.show_chart_rounded, size: 36, color: AppColors.textMuted),
+            SizedBox(height: 8),
+            Text(
+              'Nu există date în intervalul selectat.',
+              style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+              textAlign: TextAlign.center,
+            ),
+          ],
         ),
       );
     }
 
     final validWeights = points.map((p) => p.rawWeight).whereType<double>().toList();
     final validAvgs = points.map((p) => p.movingAvg7Days).whereType<double>().toList();
+    final allValues = [...validWeights, ...validAvgs];
 
-    double minY = (validWeights + validAvgs).reduce((a, b) => a < b ? a : b) - 2.0;
-    double maxY = (validWeights + validAvgs).reduce((a, b) => a > b ? a : b) + 2.0;
+    if (allValues.isEmpty) {
+      return Container(
+        height: 240,
+        alignment: Alignment.center,
+        child: const Text(
+          'Nu există valori valide de greutate înregistrate.',
+          style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+        ),
+      );
+    }
+
+    double minY = allValues.reduce((a, b) => a < b ? a : b) - 1.5;
+    double maxY = allValues.reduce((a, b) => a > b ? a : b) + 1.5;
 
     if (targetWeight != null) {
       if (targetWeight! < minY) minY = targetWeight! - 1.0;
@@ -64,6 +84,16 @@ class WeightProgressChart extends StatelessWidget {
       }
     }
 
+    // Adaptive bottom title interval
+    double bottomInterval = 1.0;
+    if (points.length > 45) {
+      bottomInterval = (points.length / 5).floorToDouble();
+    } else if (points.length > 15) {
+      bottomInterval = (points.length / 5).floorToDouble();
+    } else if (points.length > 7) {
+      bottomInterval = 2.0;
+    }
+
     return AspectRatio(
       aspectRatio: 1.7,
       child: LineChart(
@@ -73,13 +103,35 @@ class WeightProgressChart extends StatelessWidget {
           gridData: FlGridData(
             show: true,
             drawVerticalLine: false,
-            horizontalInterval: 2,
+            horizontalInterval: (maxY - minY > 10) ? 4.0 : 2.0,
             getDrawingHorizontalLine: (value) {
               return FlLine(
-                color: AppColors.surfaceElevated.withValues(alpha: 0.4),
+                color: AppColors.surfaceElevated.withValues(alpha: 0.35),
                 strokeWidth: 1,
               );
             },
+          ),
+          extraLinesData: ExtraLinesData(
+            horizontalLines: [
+              if (targetWeight != null)
+                HorizontalLine(
+                  y: targetWeight!,
+                  color: AppColors.amber.withValues(alpha: 0.7),
+                  strokeWidth: 1.5,
+                  dashArray: [6, 4],
+                  label: HorizontalLineLabel(
+                    show: true,
+                    alignment: Alignment.topRight,
+                    padding: const EdgeInsets.only(right: 6, bottom: 2),
+                    style: const TextStyle(
+                      color: AppColors.amber,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    labelResolver: (_) => 'Țintă: ${targetWeight!.toStringAsFixed(1)} kg',
+                  ),
+                ),
+            ],
           ),
           titlesData: FlTitlesData(
             rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
@@ -88,7 +140,7 @@ class WeightProgressChart extends StatelessWidget {
               sideTitles: SideTitles(
                 showTitles: true,
                 reservedSize: 42,
-                interval: 2,
+                interval: (maxY - minY > 10) ? 4.0 : 2.0,
                 getTitlesWidget: (value, meta) {
                   return Text(
                     '${value.toStringAsFixed(0)}k',
@@ -105,7 +157,7 @@ class WeightProgressChart extends StatelessWidget {
               sideTitles: SideTitles(
                 showTitles: true,
                 reservedSize: 28,
-                interval: (points.length / 5).clamp(1.0, 30.0),
+                interval: bottomInterval,
                 getTitlesWidget: (value, meta) {
                   final idx = value.toInt();
                   if (idx >= 0 && idx < points.length) {
@@ -128,17 +180,17 @@ class WeightProgressChart extends StatelessWidget {
           ),
           borderData: FlBorderData(show: false),
           lineBarsData: [
-            // Daily Raw Weights (Cyan dashed / translucent line)
+            // Daily Raw Weights (Cyan dashed / translucent dots and line)
             if (rawSpots.isNotEmpty)
               LineChartBarData(
                 spots: rawSpots,
                 isCurved: true,
                 curveSmoothness: 0.2,
-                color: AppColors.cyan.withValues(alpha: 0.6),
+                color: AppColors.cyan.withValues(alpha: 0.65),
                 barWidth: 2,
                 isStrokeCapRound: true,
                 dotData: FlDotData(
-                  show: true,
+                  show: points.length <= 35,
                   getDotPainter: (spot, percent, barData, index) {
                     return FlDotCirclePainter(
                       radius: 3.5,
@@ -163,7 +215,7 @@ class WeightProgressChart extends StatelessWidget {
                   show: true,
                   gradient: LinearGradient(
                     colors: [
-                      AppColors.emerald.withValues(alpha: 0.25),
+                      AppColors.emerald.withValues(alpha: 0.22),
                       AppColors.emerald.withValues(alpha: 0.0),
                     ],
                     begin: Alignment.topCenter,
@@ -173,18 +225,35 @@ class WeightProgressChart extends StatelessWidget {
               ),
           ],
           lineTouchData: LineTouchData(
+            handleBuiltInTouches: true,
             touchTooltipData: LineTouchTooltipData(
-              getTooltipColor: (_) => AppColors.surfaceElevated,
-              tooltipRoundedRadius: 8,
+              getTooltipColor: (_) => AppColors.surface,
+              tooltipRoundedRadius: 10,
+              tooltipBorder: const BorderSide(color: AppColors.glassBorder, width: 1),
+              tooltipPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               getTooltipItems: (touchedSpots) {
+                if (touchedSpots.isEmpty) return [];
+                final idx = touchedSpots.first.x.toInt();
+                final p = (idx >= 0 && idx < points.length) ? points[idx] : null;
+                final dateLabel = p != null ? DateFormat('d MMM yyyy').format(p.date) : '';
+
                 return touchedSpots.map((spot) {
                   final isMA = spot.barIndex == (rawSpots.isNotEmpty ? 1 : 0);
+                  final isFirst = spot == touchedSpots.first;
+
+                  final header = isFirst ? '$dateLabel\n' : '';
+                  final label = isMA ? 'Medie 7Z: ' : 'Cântar: ';
+                  final deltaStr = (targetWeight != null && isFirst)
+                      ? '\nΔ Țintă: ${(spot.y - targetWeight!).toStringAsFixed(1)} kg'
+                      : '';
+
                   return LineTooltipItem(
-                    '${isMA ? "7d MA: " : "Raw: "}${spot.y.toStringAsFixed(1)} kg',
+                    '$header$label${spot.y.toStringAsFixed(1)} kg$deltaStr',
                     TextStyle(
-                      color: isMA ? AppColors.emerald : AppColors.cyan,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
+                      color: isMA ? AppColors.emeraldLight : AppColors.cyanLight,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 11,
+                      height: 1.3,
                     ),
                   );
                 }).toList();

@@ -38,7 +38,7 @@ final dailyEntriesProvider = FutureProvider<List<DailyEntry>>((ref) async {
   final user = ref.watch(currentUserProvider);
   if (user == null) return [];
   final repo = ref.watch(dailyEntryRepositoryProvider);
-  return await repo.fetchRecentEntries(user.id, limit: 30);
+  return await repo.fetchRecentEntries(user.id, limit: 120);
 });
 
 class ProfileController extends StateNotifier<AsyncValue<void>> {

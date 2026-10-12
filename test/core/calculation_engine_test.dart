@@ -167,6 +167,58 @@ void main() {
       );
       expect(bulkTarget, 3072);
     });
+
+    test('Weekly rate of weight change calculates accurately', () {
+      final dates = [
+        DateTime(2026, 10, 1),
+        DateTime(2026, 10, 8),
+      ];
+      final weights = [100.0, 99.3]; // lost 0.7 kg in 7 days
+      final rate = CalculationEngine.calculateWeeklyRate(weights: weights, dates: dates);
+      expect(rate, -0.7);
+
+      // Over 14 days
+      final dates14 = [
+        DateTime(2026, 10, 1),
+        DateTime(2026, 10, 15),
+      ];
+      final weights14 = [100.0, 98.6]; // lost 1.4 kg in 14 days => -0.7 kg/week
+      final rate14 = CalculationEngine.calculateWeeklyRate(weights: weights14, dates: dates14);
+      expect(rate14, -0.7);
+    });
+
+    test('Streak calculation counts consecutive logged days', () {
+      final refDate = DateTime(2026, 10, 12);
+      final loggedDates = [
+        DateTime(2026, 10, 12),
+        DateTime(2026, 10, 11),
+        DateTime(2026, 10, 10),
+        DateTime(2026, 10, 8), // skipped Oct 9
+      ];
+      final streak = CalculationEngine.calculateStreak(loggedDates, refDate);
+      expect(streak, 3);
+
+      // Not logged today, but logged yesterday (streak maintained)
+      final loggedYesterday = [
+        DateTime(2026, 10, 11),
+        DateTime(2026, 10, 10),
+      ];
+      expect(CalculationEngine.calculateStreak(loggedYesterday, refDate), 2);
+
+      // Not logged yesterday either (broken streak)
+      final brokenDates = [
+        DateTime(2026, 10, 10),
+      ];
+      expect(CalculationEngine.calculateStreak(brokenDates, refDate), 0);
+    });
+
+    test('Diet adherence percentage calculation', () {
+      final planFollowed = [true, true, true, false]; // 3 out of 4 = 75%
+      expect(CalculationEngine.calculateDietAdherence(planFollowed), 75);
+
+      expect(CalculationEngine.calculateDietAdherence([]), 100);
+      expect(CalculationEngine.calculateDietAdherence([true, true]), 100);
+    });
   });
 }
 
