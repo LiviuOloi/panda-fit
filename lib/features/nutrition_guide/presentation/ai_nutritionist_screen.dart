@@ -1,6 +1,7 @@
 import 'dart:convert';
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -100,7 +101,7 @@ class _AiNutritionistScreenState extends ConsumerState<AiNutritionistScreen> {
       _messages.add({
         'role': 'ai',
         'text':
-            'Salut ${widget.profile.firstName}! Sunt antrenorul și nutriționistul tău Panda AI 🐼.\n\nȚinta ta zilnică este de **~$target kcal/zi** (${isCutting ? "Deficit de Slăbire / Cutting" : "Surplus de Masă / Bulking"}).\n\nCu ce începem azi? Îmi poți cere un plan alimentar complet, sfaturi rapide sau **îmi poți trimite direct o poză cu eticheta oricărui produs** din frigider/magazin ca să-ți spun pe loc dacă e bun și cât să cântărești!',
+            'Salut, ${widget.profile.firstName}! Sunt antrenorul și nutriționistul tău Panda AI 🐼.\n\nPutem discuta **complet liber despre orice vrei**: de la rețete delicioase și mese rapide de 15 min, la antrenamente, suplimente, de ce fluctuează cântarul sau cum să gestionezi poftele!\n\nȚinta ta orientativă actuală este de **~$target kcal/zi** (${isCutting ? "Deficit pentru Slăbire / Cutting" : "Surplus pentru Masă Musculară"}).\n\nCu ce vrei să începem azi? Întreabă-mă orice sau trimite-mi o poză cu eticheta unui produs!',
       });
     });
     _saveChatHistory();
@@ -246,68 +247,9 @@ class _AiNutritionistScreenState extends ConsumerState<AiNutritionistScreen> {
     await _saveChatHistory();
 
     final customApiKey = ref.read(geminiApiKeyProvider).valueOrNull;
-
-    final lowerPrompt = promptText.toLowerCase().trim();
-    final isGratitudeOrGreetingOnly = (lowerPrompt == 'mersi' ||
-            lowerPrompt == 'multumesc' ||
-            lowerPrompt == 'mulțumesc' ||
-            lowerPrompt == 'super' ||
-            lowerPrompt == 'top' ||
-            lowerPrompt == 'ok' ||
-            lowerPrompt == 'bine' ||
-            lowerPrompt == 'salut' ||
-            lowerPrompt == 'buna' ||
-            lowerPrompt == 'bună' ||
-            lowerPrompt == 'cum esti' ||
-            lowerPrompt == 'cum ești' ||
-            lowerPrompt == 'ce faci') &&
-        imageBytesToSend == null;
-
-    final shouldGenerateCards = !isGratitudeOrGreetingOnly &&
-        (presetText != null ||
-            AiNutritionService.isQuickOrSingleMealQuery(lowerPrompt) ||
-            lowerPrompt.contains('plan') ||
-            lowerPrompt.contains('meniu') ||
-            lowerPrompt.contains('masa') ||
-            lowerPrompt.contains('masă') ||
-            lowerPrompt.contains('mese') ||
-            lowerPrompt.contains('retet') ||
-            lowerPrompt.contains('rețet') ||
-            lowerPrompt.contains('mancare') ||
-            lowerPrompt.contains('mâncare') ||
-            lowerPrompt.contains('ce mananc') ||
-            lowerPrompt.contains('ce să mănânc') ||
-            lowerPrompt.contains('ce sa mananc') ||
-            lowerPrompt.contains('recomand') ||
-            lowerPrompt.contains('rapid') ||
-            lowerPrompt.contains('repede') ||
-            lowerPrompt.contains('pranz') ||
-            lowerPrompt.contains('prânz') ||
-            lowerPrompt.contains('cina') ||
-            lowerPrompt.contains('cină') ||
-            lowerPrompt.contains('dejun') ||
-            lowerPrompt.contains('gustar') ||
-            lowerPrompt.contains('snack') ||
-            lowerPrompt.contains('pui') ||
-            lowerPrompt.contains('somon') ||
-            lowerPrompt.contains('peste') ||
-            lowerPrompt.contains('pește') ||
-            lowerPrompt.contains('vita') ||
-            lowerPrompt.contains('vită') ||
-            lowerPrompt.contains('oua') ||
-            lowerPrompt.contains('ouă') ||
-            lowerPrompt.contains('gatit') ||
-            lowerPrompt.contains('gătit') ||
-            lowerPrompt.contains('diet') ||
-            lowerPrompt.contains('card') ||
-            lowerPrompt.contains('meal') ||
-            lowerPrompt.contains('recipe') ||
-            imageBytesToSend != null);
-
     final history = _messages.map((m) => {'role': m['role'] as String, 'text': m['text'] as String}).toList();
 
-    // Run conversational consultation and optional recipe generation in parallel
-    final chatFuture = _aiService.chatConsultation(
+    final result = await _aiService.chatConsultationAdvanced(
       history: history,
       userMessage: promptText,
       profile: widget.profile,
@@ -316,28 +258,14 @@ class _AiNutritionistScreenState extends ConsumerState<AiNutritionistScreen> {
       imageBytes: imageBytesToSend,
     );
 
-    final planFuture = shouldGenerateCards
-        ? _aiService.generateCustomMealPlan(
-            profile: widget.profile,
-            activeMission: widget.activeMission,
-            userPreferences: promptText,
-            customApiKey: customApiKey,
-            imageBytes: imageBytesToSend,
-          )
-        : Future.value(<MealRecipe>[]);
-
-    final results = await Future.wait([chatFuture, planFuture]);
-    final reply = results[0] as String;
-    final generatedForThisMessage = results[1] as List<MealRecipe>;
-
     if (!mounted) return;
 
     setState(() {
       _messages.add({
         'role': 'ai',
-        'text': reply,
-        if (generatedForThisMessage.isNotEmpty)
-          'recipes': generatedForThisMessage.map((r) => r.toJson()).toList(),
+        'text': result.markdownReply,
+        if (result.recipes.isNotEmpty)
+          'recipes': result.recipes.map((r) => r.toJson()).toList(),
       });
       _isLoading = false;
     });
@@ -492,30 +420,82 @@ class _AiNutritionistScreenState extends ConsumerState<AiNutritionistScreen> {
                           .toList()
                       : <MealRecipe>[];
 
-                  if (!isUser && recipes.isNotEmpty) {
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: _buildMessageRecipesSection(recipes),
-                    );
-                  }
-
                   return Column(
                     crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
                     children: [
                       Align(
                         alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
                         child: Container(
-                          margin: const EdgeInsets.only(bottom: 12),
-                          constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.8),
+                          margin: const EdgeInsets.only(bottom: 8),
+                          constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * (isUser ? 0.8 : 0.88)),
                           padding: const EdgeInsets.all(14),
                           decoration: BoxDecoration(
                             color: isUser ? AppColors.emerald : AppColors.surface,
-                            borderRadius: BorderRadius.circular(14),
+                            borderRadius: BorderRadius.only(
+                              topLeft: const Radius.circular(16),
+                              topRight: const Radius.circular(16),
+                              bottomLeft: Radius.circular(isUser ? 16 : 4),
+                              bottomRight: Radius.circular(isUser ? 4 : 16),
+                            ),
                             border: isUser ? null : Border.all(color: AppColors.glassBorder),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.15),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
+                              if (!isUser) ...[
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.all(4),
+                                          decoration: BoxDecoration(
+                                            color: AppColors.emerald.withValues(alpha: 0.15),
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: const Text('🐼', style: TextStyle(fontSize: 13)),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        const Text(
+                                          'Panda AI Coach',
+                                          style: TextStyle(
+                                            color: AppColors.emeraldLight,
+                                            fontSize: 12.5,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    IconButton(
+                                      padding: EdgeInsets.zero,
+                                      constraints: const BoxConstraints(),
+                                      icon: const Icon(Icons.copy_rounded, size: 15, color: AppColors.textMuted),
+                                      tooltip: 'Copiază',
+                                      onPressed: () {
+                                        Clipboard.setData(ClipboardData(text: msg['text'] as String));
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          const SnackBar(
+                                            content: Text('Răspuns copiat în clipboard! 📋'),
+                                            duration: Duration(seconds: 1),
+                                            backgroundColor: AppColors.surfaceElevated,
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                const Divider(color: AppColors.surfaceElevated, height: 1),
+                                const SizedBox(height: 10),
+                              ],
                               if (imageBase64 != null) ...[
                                 ClipRRect(
                                   borderRadius: BorderRadius.circular(8),
@@ -528,18 +508,65 @@ class _AiNutritionistScreenState extends ConsumerState<AiNutritionistScreen> {
                                 ),
                                 const SizedBox(height: 10),
                               ],
-                              Text(
-                                msg['text'] as String,
-                                style: TextStyle(
-                                  color: isUser ? Colors.white : AppColors.textPrimary,
-                                  fontSize: 14,
-                                  height: 1.4,
+                              if (isUser)
+                                SelectableText(
+                                  msg['text'] as String,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 14.5,
+                                    height: 1.45,
+                                  ),
+                                )
+                              else
+                                MarkdownBody(
+                                  data: msg['text'] as String,
+                                  selectable: true,
+                                  styleSheet: MarkdownStyleSheet(
+                                    p: const TextStyle(
+                                      color: AppColors.textPrimary,
+                                      fontSize: 14,
+                                      height: 1.5,
+                                    ),
+                                    strong: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                    h1: const TextStyle(
+                                      color: AppColors.emeraldLight,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 17,
+                                    ),
+                                    h2: const TextStyle(
+                                      color: AppColors.emeraldLight,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 15,
+                                    ),
+                                    h3: const TextStyle(
+                                      color: AppColors.emeraldLight,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                    ),
+                                    listBullet: const TextStyle(
+                                      color: AppColors.emerald,
+                                      fontSize: 14,
+                                    ),
+                                    code: const TextStyle(
+                                      backgroundColor: AppColors.surfaceElevated,
+                                      color: AppColors.cyanLight,
+                                      fontFamily: 'monospace',
+                                      fontSize: 12.5,
+                                    ),
+                                  ),
                                 ),
-                              ),
                             ],
                           ),
                         ),
                       ),
+                      if (!isUser && recipes.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4, bottom: 12),
+                          child: _buildMessageRecipesSection(recipes),
+                        ),
                     ],
                   );
                 },
@@ -547,14 +574,39 @@ class _AiNutritionistScreenState extends ConsumerState<AiNutritionistScreen> {
             ),
 
             if (_isLoading)
-              const Padding(
-                padding: EdgeInsets.all(8.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppColors.emerald.withValues(alpha: 0.3)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.emerald.withValues(alpha: 0.05),
+                      blurRadius: 10,
+                      spreadRadius: 1,
+                    ),
+                  ],
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation(AppColors.emerald))),
+                    Text('🐼', style: TextStyle(fontSize: 16)),
                     SizedBox(width: 10),
-                    Text('Panda AI analizează macronutrienții & calculează planul...', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
+                    SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation(AppColors.emerald),
+                      ),
+                    ),
+                    SizedBox(width: 10),
+                    Text(
+                      'Panda AI analizează și formulează răspunsul...',
+                      style: TextStyle(fontSize: 12.5, color: AppColors.textSecondary, fontWeight: FontWeight.w500),
+                    ),
                   ],
                 ),
               ),
@@ -618,11 +670,13 @@ class _AiNutritionistScreenState extends ConsumerState<AiNutritionistScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               child: Row(
                 children: [
-                  _buildQuickChip('🔥 Generează Plan Alimentar (4 Mese)'),
-                  _buildQuickChip('📊 Analiză Mentenanță & TDEE'),
-                  _buildQuickChip('🐟 Meniu Bogat în Pește & Somon'),
-                  _buildQuickChip('🚫 Fără Lactate'),
-                  _buildQuickChip('⚡ Mese Rapide 15 Min'),
+                  _buildQuickChip('💬 De ce fluctuează greutatea zilnic?'),
+                  _buildQuickChip('⚡ O masă rapidă în 15 min'),
+                  _buildQuickChip('🥑 Cum scap de pofta de dulce seara?'),
+                  _buildQuickChip('🥩 Câtă proteină am nevoie zilnic?'),
+                  _buildQuickChip('📋 Plan alimentar complet pe azi'),
+                  _buildQuickChip('😴 Somnul & arderea grăsimilor'),
+                  _buildQuickChip('💊 Ce suplimente merită luate?'),
                 ],
               ),
             ),

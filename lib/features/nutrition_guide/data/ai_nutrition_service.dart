@@ -6,6 +6,16 @@ import '../../missions/domain/mission_model.dart';
 import '../../profile/domain/profile_model.dart';
 import '../domain/recipe_model.dart';
 
+class AiConsultationResult {
+  final String markdownReply;
+  final List<MealRecipe> recipes;
+
+  const AiConsultationResult({
+    required this.markdownReply,
+    this.recipes = const [],
+  });
+}
+
 class AiNutritionService {
   final String? _apiKey;
 
@@ -272,6 +282,27 @@ Return ONLY a valid JSON array matching this exact schema without markdown wrap:
     Uint8List? imageBytes,
     String? mimeType,
   }) async {
+    final result = await chatConsultationAdvanced(
+      history: history,
+      userMessage: userMessage,
+      profile: profile,
+      activeMission: activeMission,
+      customApiKey: customApiKey,
+      imageBytes: imageBytes,
+      mimeType: mimeType,
+    );
+    return result.markdownReply;
+  }
+
+  Future<AiConsultationResult> chatConsultationAdvanced({
+    required List<Map<String, String>> history,
+    required String userMessage,
+    required UserProfile profile,
+    required Mission activeMission,
+    String? customApiKey,
+    Uint8List? imageBytes,
+    String? mimeType,
+  }) async {
     final apiKey = customApiKey ?? _apiKey ?? const String.fromEnvironment('GEMINI_API_KEY');
 
     final bmr = CalculationEngine.calculateBMR(
@@ -290,48 +321,71 @@ Return ONLY a valid JSON array matching this exact schema without markdown wrap:
     final recommendedTarget = isCutting ? maintenance - 450 : maintenance + 300;
 
     final dynamicSystemPrompt = '''
-You are Panda AI — an energetic, warm, friendly, and expert fitness coach and nutritionist for PandaFit.
-You converse naturally, casually, and intelligently, exactly like ChatGPT with a supportive personal trainer & nutritionist vibe!
-NEVER sound robotic, scripted, or repetitive. Adapt directly to what the user actually asks for.
+You are Panda AI — a world-class, ultra-intelligent, energetic, friendly, and deeply knowledgeable fitness coach, nutritionist, and wellness strategist for PandaFit.
+You converse naturally, fluently, and casually, with the conversational freedom, empathy, intellectual versatility, and deep reasoning of ChatGPT and Gemini.
+You are NEVER a rigid robot, questionnaire, or monotonous meal-vending machine. You speak like an awesome personal coach and supportive training partner!
+
+CONVERSATIONAL FREEDOM & TOPIC BREADTH:
+- You love talking freely about ANYTHING the user wants:
+  * Nutrition, macros, fiber, micronutrients, glycemic index, meal ideas, snacks
+  * Workout splits (Push/Pull/Legs, Upper/Lower, Full Body), hypertrophy, rep ranges, cardio, swimming
+  * Fat loss physiology, weight plateaus, and why scale weight fluctuates daily (water retention, glycogen stores, sodium, digestive transit)
+  * Supplements: creatine monohydrate, whey isolate, omega-3, vitamin D3/K2, caffeine, magnesium
+  * Sleep quality, recovery, stress management, cortisol, appetite hormones (ghrelin/leptin)
+  * Fighting evening cravings, forming habits, building mental discipline and consistency
+  * Everyday casual banter, encouragement, check-ins, or humor!
+- Adapt directly to the user. Never give cookie-cutter or repetitive answers.
 
 CRITICAL LANGUAGE RULE:
-- If the user writes in Romanian, you MUST respond completely and fluently in ROMANIAN! Use natural, friendly, informal phrasing ("tu", "hai să facem", "arată super", "cu drag", "nicio problemă", etc.).
+- If the user writes in Romanian, you MUST respond completely and fluently in ROMANIAN using natural, warm, friendly phrasing ("tu", "salut!", "hai să vedem", "fii atent", "nu te îngrijora", "super tare!").
 - If the user writes in English, respond in English.
-- NEVER respond in robotic English when addressed in Romanian.
+- NEVER respond in stiff or robotic language.
 
-USER BIOMETRIC PROFILE:
+USER BIOMETRIC CONTEXT (KNOWLEDGE BASE):
 - Name: ${profile.firstName}
 - Age: ${profile.age} years old
 - Sex: ${profile.sex}
 - Height: ${profile.heightCm} cm
 - Starting Weight: ${profile.profileStartWeight} kg
-- Target Weight: ${activeMission.targetWeight} kg (${isCutting ? "CUTTING / Fat Loss (-450 kcal deficit)" : "BULKING / Lean Muscle (+300 kcal surplus)"})
+- Target Weight: ${activeMission.targetWeight} kg (${isCutting ? "CUTTING / Fat Loss: -450 kcal deficit" : "BULKING / Lean Muscle: +300 kcal surplus"})
 - Basal Metabolic Rate (BMR): ~$bmr kcal/day
 - Maintenance TDEE: ~$maintenance kcal/day
-- Recommended Daily Caloric Target: ~$recommendedTarget kcal/day
+- Target Daily Calories: ~$recommendedTarget kcal/day
+* IMPORTANT: Use these numbers intelligently when relevant to personalize answers, but DO NOT mechanically recite or dump this entire profile in every reply if the user just asked a general or casual question.
 
-PANDAFIT CORE INVARIANTS:
-1. Weighing state: Meat is ALWAYS weighed RAW, Rice/Carbs DRY/uncooked, Veggies RAW/frozen, Oils measured.
-2. Glycemic focus: Low GI carbs (Basmati/Panzani rice, oats, sweet potatoes), high fiber vegetables, lean protein.
+PANDAFIT INVARIANTS (WHEN DISCUSSING MEALS OR RECIPES):
+1. Weighing Protocol: Meat is ALWAYS weighed RAW / uncooked, Rice/Carbs DRY / uncooked, Veggies RAW / frozen, Oils measured in grams/ml.
+2. Glycemic Quality: Low/medium GI carbs (Panzani/Basmati rice, sweet potatoes, oats), high-fiber veggies, lean protein.
 
-HOW TO CONVERSE & ASSIST:
-1. Natural & Casual Persona: Be warm, direct, conversational, and energetic. Never sound like an automated robotic system. Talk like an expert gym buddy & nutritionist who cares.
-2. SPECIFIC RESPONSIVENESS (DO NOT DUMP CANNED TEXT):
-   - If the user asks for a quick meal idea ("o masă rapidă", "o recomandare rapidă", "ce să mănânc acum", "ceva rapid de gătit"):
-     Give ONE specific, delicious 10-15 minute meal idea. Explain why it works, the exact weighed raw/dry ingredients, and fast preparation steps. Mention that the meal recipe card is attached below and they can save it to their menu with 1 click!
-   - If the user asks for a full daily meal plan ("plan alimentar complet", "meniu pe o zi", "toate mesele"):
-     Layout the 4 daily meals (Breakfast, Snack, Lunch, Dinner) matching ~$recommendedTarget kcal/day, and mention the "Salvează Tot Planul" button attached below.
-   - If the user asks about a specific meal (only breakfast, only lunch, only dinner, only snack):
-     Focus ONLY on that specific meal.
-   - If the user sends casual greetings, thanks, or check-ins ("mulțumesc", "mersi", "salut", "ce faci", "cum ești"):
-     Chat warmly and encouragingly like a real human friend without generating meal recipes.
-3. Checking Nutrition Labels & Products (Vision):
-   - When the user sends a photo of a food item or nutrition label:
-   - Carefully read its ingredients and nutritional table (Calories, Protein, Carbs, Sugars, Fat, Saturated Fat, Fiber).
-   - Give a clear, friendly verdict: Is it good/healthy? Is it suitable for their current ${isCutting ? 'cutting' : 'bulking'} target (~$recommendedTarget kcal/day)?
-   - Recommend the exact portion (in grams) to eat and how to incorporate it into their daily meal plan!
-4. Multi-turn Memory: Keep track of the full ongoing conversation.
-5. Formatting: Use clean Markdown formatting (bolding, bullet points, clean spacing, emojis 🐼💪🥗⚡).
+INTERACTIVE RECIPE CARDS INTEGRATION:
+- If and ONLY IF the user explicitly asks for recipes, meal ideas, a quick dish (15 min), or a daily meal plan:
+  1. Write your delicious, friendly culinary and nutrition advice in natural markdown text.
+  2. At the very end of your response, output a JSON block inside ```json:recipes ... ```:
+```json:recipes
+[
+  {
+    "category": "BREAKFAST",
+    "title": "Numele Rețetei",
+    "ingredients": [
+      {"name": "Ingredient 1", "amount": "200g", "state": "raw"},
+      {"name": "Ingredient 2", "amount": "80g", "state": "dry/uncooked"}
+    ],
+    "calories": 520,
+    "protein_g": 45.0,
+    "carbs_g": 50.0,
+    "fat_g": 12.0,
+    "instructions": "Instrucțiuni clare de preparare..."
+  }
+]
+```
+  Allowed categories: "BREAKFAST", "SNACK", "LUNCH", "DINNER", "CUSTOM".
+- If the user is NOT asking for a meal recipe (e.g. asking about workouts, motivation, sleep, physiology, creatine, or casual chat), DO NOT output any json block! Just converse freely and naturally!
+
+CHECKING LABELS & FOOD PHOTOS (VISION):
+- When the user sends a photo of a food item or nutrition label:
+  * Read the ingredients & macronutrients table (Calories, Protein, Carbs, Sugars, Fat, Fiber).
+  * Give a clear, friendly verdict on whether it fits their current goal (~$recommendedTarget kcal/day).
+  * Recommend the exact weighed portion (in grams) to eat.
 ''';
 
     if (apiKey.isNotEmpty) {
@@ -386,8 +440,9 @@ HOW TO CONVERSE & ASSIST:
           );
 
           final response = await model.generateContent(validTurns);
-          if (response.text != null && response.text!.trim().isNotEmpty) {
-            return response.text!;
+          final rawText = response.text;
+          if (rawText != null && rawText.trim().isNotEmpty) {
+            return _parseConsultationResponse(rawText);
           }
         } catch (e) {
           debugPrint('Gemini chatConsultation tried $modelName error: $e');
@@ -398,8 +453,9 @@ HOW TO CONVERSE & ASSIST:
             ];
             final model = GenerativeModel(model: modelName, apiKey: apiKey);
             final response = await model.generateContent(fallbackTurns);
-            if (response.text != null && response.text!.trim().isNotEmpty) {
-              return response.text!;
+            final rawText = response.text;
+            if (rawText != null && rawText.trim().isNotEmpty) {
+              return _parseConsultationResponse(rawText);
             }
           } catch (e2) {
             debugPrint('Gemini fallback chat error on $modelName: $e2');
@@ -408,7 +464,42 @@ HOW TO CONVERSE & ASSIST:
       }
     }
 
-    return _generateOfflineChatResponse(userMessage, profile, activeMission);
+    final offlineText = _generateOfflineChatResponse(userMessage, profile, activeMission);
+    final lower = userMessage.toLowerCase();
+    List<MealRecipe> offlineRecipes = [];
+    if (lower.contains('plan') ||
+        lower.contains('meniu') ||
+        lower.contains('mese') ||
+        isQuickOrSingleMealQuery(lower) ||
+        lower.contains('retet') ||
+        lower.contains('rețet')) {
+      offlineRecipes = _generateOfflineTailoredPlan(profile, activeMission, userMessage);
+    }
+    return AiConsultationResult(markdownReply: offlineText, recipes: offlineRecipes);
+  }
+
+  AiConsultationResult _parseConsultationResponse(String rawText) {
+    List<MealRecipe> recipes = [];
+    String cleaned = rawText;
+
+    // Look for ```json:recipes ... ``` or ```json [...] ```
+    final blockRegex = RegExp(r'```(?:json:recipes|json)?\s*(\[[\s\S]*?\])\s*```', caseSensitive: false);
+    final match = blockRegex.firstMatch(rawText);
+
+    if (match != null) {
+      final jsonBlock = match.group(1);
+      if (jsonBlock != null) {
+        try {
+          final decoded = json.decode(jsonBlock) as List<dynamic>;
+          recipes = decoded.map((e) => MealRecipe.fromJson(e as Map<String, dynamic>)).toList();
+          cleaned = rawText.replaceAll(match.group(0)!, '').trim();
+        } catch (e) {
+          debugPrint('Error parsing recipe block from AI response: $e');
+        }
+      }
+    }
+
+    return AiConsultationResult(markdownReply: cleaned, recipes: recipes);
   }
 
   String _extractJson(String rawText) {

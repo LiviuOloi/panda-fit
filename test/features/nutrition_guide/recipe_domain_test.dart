@@ -132,6 +132,57 @@ void main() {
       expect(chatReply.contains('12-15 minute') || chatReply.contains('Tigaie Rapidă'), isTrue);
       expect(chatReply.contains('4. Cină Ușoară'), isFalse);
     });
+
+    test('chatConsultationAdvanced handles free conversation and extracts embedded recipes', () async {
+      final aiService = AiNutritionService();
+      final profile = UserProfile(
+        id: 'test-u',
+        username: 'liviu',
+        firstName: 'Liviu',
+        lastName: 'Oloi',
+        sex: 'MALE',
+        birthDate: DateTime(1994, 6, 15),
+        heightCm: 182.0,
+        profileStartWeight: 98.4,
+        dailyTargetCalories: 2300,
+        createdAt: DateTime(2026, 1, 1),
+        updatedAt: DateTime(2026, 1, 1),
+      );
+
+      final cuttingMission = Mission(
+        id: 'm-1',
+        userId: 'test-u',
+        missionType: MissionType.cutting,
+        missionStartWeight: 98.4,
+        targetWeight: 90.0,
+        startedAt: DateTime(2026, 10, 1),
+        createdAt: DateTime(2026, 10, 1),
+        updatedAt: DateTime(2026, 10, 1),
+      );
+
+      // 1. General conversation query (creatine / hydration) - should not force recipes
+      final generalResult = await aiService.chatConsultationAdvanced(
+        history: [],
+        userMessage: 'Ce parere ai despre creatina monohidrata?',
+        profile: profile,
+        activeMission: cuttingMission,
+      );
+
+      expect(generalResult.markdownReply.isNotEmpty, isTrue);
+      expect(generalResult.recipes.isEmpty, isTrue);
+
+      // 2. Meal recommendation query - should return recipe cards
+      final mealResult = await aiService.chatConsultationAdvanced(
+        history: [],
+        userMessage: 'Vreau o masa rapida de 15 min',
+        profile: profile,
+        activeMission: cuttingMission,
+      );
+
+      expect(mealResult.markdownReply.isNotEmpty, isTrue);
+      expect(mealResult.recipes.isNotEmpty, isTrue);
+      expect(mealResult.recipes.first.title.isNotEmpty, isTrue);
+    });
   });
 }
 
