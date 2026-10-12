@@ -738,47 +738,22 @@ Iată o gustare metabolică rapidă, dulce și plină de antioxidanți, ${profil
         lower.contains('diet')) {
       if (isRo) {
         return '''
-🔥 **Uite un Plan Alimentar Complet & Delicios — ${isCutting ? "CUTTING (-450 kcal deficit)" : "BULKING (+300 kcal surplus)"} (~$recommendedTarget kcal/zi):**
+🔥 **Planul tău alimentar complet este gata, ${profile.firstName}!**
 
-L-am configurat special pentru greutatea ta de **${profile.profileStartWeight} kg**, cu proporții ideale de proteine, carbohidrați complecși cu indice glicemic scăzut și grăsimi sănătoase:
+L-am configurat special pentru greutatea ta de **${profile.profileStartWeight} kg**, calibrat la **~$recommendedTarget kcal/zi** (${isCutting ? "CUTTING: -450 kcal deficit pentru ardere accelerată a grăsimilor" : "BULKING: +300 kcal surplus curat"}).
 
-🍳 **1. Micul Dejun (~520 kcal | 42g P · 40g C · 18g F):**
-• **3 Ouă întregi** (crude) omletă cu **5g ulei măsline măsurat**.
-• **100g Brânză Cottage Light 3%** + **200g Legume verzi**.
-• **70g Pâine Graham** integrală.
+Fiecare masă conține proteine de calitate, carbohidrați complecși cu indice glicemic scăzut și legume voluminoase pentru sațietate maximă.
 
-🍏 **2. Gustare Rapidă (~280 kcal | 22g P · 28g C · 8g F):**
-• **150g Iaurt Grecesc 2%** + **75g Afine** + **10g Semințe chia**.
-
-🍗 **3. Prânz Anabolic (~650 kcal | 55g P · 65g C · 12g F):**
-• **220g Piept de pui** (cântărit **CRUD**).
-• **100g Orez Basmati / Panzani** (cântărit **USCAT/crud**).
-• **250g Legume asortate** trase la tigaie + **80g Murături în saramură**.
-
-🥗 **4. Cină Ușoară (~600 kcal | 50g P · 45g C · 16g F):**
-• **200g Somon sălbatic sau Păstrăv** (cântărit **CRUD**) la cuptor.
-• **200g Cartofi wedges** (cântăriți **CRUD**) + salată verde mare.
-
----
-👇 **Ți-am atașat toate cele 4 mese chiar mai jos!** Poți salva oricare masă individual, sau poți apăsa pe **„Salvează Tot Planul”** pentru a le importa pe toate 4 dintr-un singur click în profilul tău!''';
+👇 **Găsești toate cele 4 mese configurate în detaliu pe cardurile interactive de mai jos!**
+Poți salva fiecare masă individual în meniul tău sau poți apăsa direct pe **„Salvează Tot Planul”** pentru a le importa pe toate 4 dintr-un singur click în profilul tău!''';
       } else {
         return '''
-🔥 **Full Personalized Daily Meal Plan — ${isCutting ? "CUTTING (-450 kcal deficit)" : "BULKING (+300 kcal surplus)"} (~$recommendedTarget kcal/day):**
+🔥 **Your personalized daily meal plan is ready, ${profile.firstName}!**
 
-🍳 **1. High-Protein Breakfast (~520 kcal | 42g P · 40g C · 18g F):**
-• **3 Whole eggs** (raw) + 5g measured olive oil + 100g Cottage Cheese Light + 70g Graham toast.
+Optimized for your weight of **${profile.profileStartWeight} kg**, calibrated to **~$recommendedTarget kcal/day** (${isCutting ? "CUTTING: -450 kcal fat loss deficit" : "BULKING: +300 kcal lean bulk surplus"}).
 
-🍏 **2. Metabolic Snack (~280 kcal | 22g P · 28g C · 8g F):**
-• **150g Greek Yogurt 2%** + **75g Blueberries** + **10g Chia seeds**.
-
-🍗 **3. Power Lunch (~650 kcal | 55g P · 65g C · 12g F):**
-• **220g Chicken Breast** (RAW) + **100g Basmati Rice** (DRY) + 250g veggies.
-
-🥗 **4. Clean Dinner (~600 kcal | 50g P · 45g C · 16g F):**
-• **200g Wild Salmon** (RAW) + **200g Raw potato wedges** + green salad.
-
----
-👇 **All 4 meal cards are attached below.** Click **"Salvează Tot Planul"** to add all 4 to your menu at once!''';
+👇 **All 4 balanced meals are configured on the interactive cards below!**
+You can save each meal individually or click **"Salvează Tot Planul"** to import all 4 at once into your personal menu!''';
       }
     }
 
