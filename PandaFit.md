@@ -8,7 +8,7 @@
 
 **Panda Fit** este o aplicație modernă, completă și intuitivă de monitorizare a greutății, compoziției corporale, nutriției și activităților fizice, proiectată pentru a asigura rezultate sustenabile (optimizare glicemică / HbA1c, slăbire graduală sau bulking controlat).
 
-Aplicația combină rigoarea analitică (medie mobilă pe 7 zile, calcul precis al caloriilor nete, urmărire a misiunilor de greutate) cu o experiență de utilizare de nivel premium (interfață modernă, grafice interactive, formulare rapide de logging zilnic și ghid de mese integrat).
+Aplicația combină rigoarea analitică (medie mobilă pe 7 zile, calcul precis al caloriilor nete, urmărire a misiunilor de greutate, calcul pesimist al arderilor la sală) cu o experiență de utilizare de nivel premium (interfață modernă, grafice interactive, formulare rapide de logging zilnic, asistent AI multimodal și tracker complet de forță).
 
 ---
 
@@ -26,9 +26,13 @@ Aplicația combină rigoarea analitică (medie mobilă pe 7 zile, calcul precis 
 * **Backend & Cloud DB:** Supabase (PostgreSQL 15+, Auth, Realtime WebSocket, PostgREST API cu Row Level Security RLS).
 * **State Management:** Flutter Riverpod (`flutter_riverpod`).
 * **Data Visualization:** `fl_chart` (Grafic interactiv greutate zilnică vs. Medie mobilă 7 zile vs. Target Mission).
-* **AI Engine:** Google Generative AI (`google_generative_ai` / Gemini 1.5 & 2.0 Flash) cu cascadă de fallback automată și motor offline determinist.
+* **Local Storage & Offline Queue:** `shared_preferences` cu sincronizare automată la reconectare.
+* **Camera & Barcode Scanner:** `mobile_scanner` (60 FPS camera engine) + OpenFoodFacts REST API.
+* **AI Engine:** Google Generative AI (`google_generative_ai` / Gemini 1.5 & 2.0 Flash) cu cascadă de fallback automată, analiză multimodală de etichete și motor offline determinist.
+* **Notificări Locale & Alarme:** `flutter_local_notifications` + `timezone`.
+* **Rapoarte Medicale & Documente:** `pdf` + `printing`.
 * **Styling & Design System:** Material 3 Dark Theme personalizat + Glassmorphism, paletă curatoriată (Emerald / Cyan / Slate / Amber / Rose).
-* **Icons & UI Extras:** Material Symbols / Lucide Icons, carduri glassmorphic cu micro-animații fluide.
+* **Feedback Tactil:** Haptic feedback nativ pentru sală, scanare și navigație.
 
 ---
 
@@ -59,130 +63,62 @@ Obiectivele de greutate sunt tratate ca **Misiuni active**:
 * **Regulă strictă de îndeplinire (Strict Inequality):**
   * **Cutting Accomplished:** $\text{Current Weight} < \text{Target Weight}$ (atingerea exactă a targetului NU este suficientă; ex: la target 95.0 kg, devine îndeplinit la 94.9 kg).
   * **Bulking Accomplished:** $\text{Current Weight} > \text{Target Weight}$ (ex: la target 100.0 kg, devine îndeplinit la 100.1 kg).
-* **Missions Accomplished (Istoric):** La finalizarea unei misiuni, aceasta se arhivează cu data reușitei, greutatea de start, greutatea țintă și durata, permițând inițierea unei noi misiuni.
+* **Arhivare și Misiuni noi:** Doar o misiune poate fi activă simultan. La îndeplinire, statusul trece în `ACCOMPLISHED`, iar utilizatorul este invitat să își configureze următoarea misiune.
 
-### 4.4. Nutrition & Activity Rules (Sincronizat cu Google Sheet)
-* **Țintă calorică:** $\sim 2300\text{ kcal/zi}$ (ajustabilă în funcție de trendul greutății).
-* **Priorități:**
-  1. Optimizare glicemică / HbA1c (carbohidrați complecși, indice glicemic redus, fibre, legume cântărite).
-  2. Slăbire graduală sănătoasă.
-* **Plan Mese Predefinite (Quick Templates):**
-  * **Mic Dejun:** Omletă (3 ouă, 100g Cottage Cheese Light 3%, 200g legume: 80g broccoli + 60g fasole verde + 60g ciuperci, 70-80g pâine Graham, ulei de măsline măsurat).
-  * **Gustare:** Iaurt & afine (150g iaurt grecesc 2%, 75g afine, 10g chia, 10g unt de arahide).
-  * **Cină A:** Pui + orez (200-250g piept pui crud, 125g orez Panzani uscat, 250g legume, 50-100g murături, 0-5g ulei).
-  * **Cină B:** Ceafă + legume (180-200g ceafă crudă fără orez, 300g legume, 50-100g murături, fără ulei).
-  * **Cină C:** Pui + wedges (200-250g piept pui crud, 200g wedges Gustona, 50-100g murături).
-* **Reguli cântărire alimente:** Măsurare în stare crudă / uscată înainte de preparare; legume cântărite congelate.
-* **Activități:** Urmărire Înot (Da/Nu), Antrenamente sală, Plan respectat (Da/Nu).
+### 4.4. Nutrition & Meal Protocol
+* **Măsurare precisă:**
+  * Carnea / Proteina: Cântărită **crudă**.
+  * Orezul / Carbohidrații complecși: Cântăriți **uscați / nepreparați**.
+  * Legumele: Cântărite **crude / congelate**.
+  * Uleiul de gătit: Măsurat cu lingurița sau cântărit în grame (niciodată turnat „din ochi”).
+* **Control Glicemic & HbA1c:** Prioritizarea carbohidraților cu indice glicemic scăzut (pâine graham/secară, orez basmati, ovăz integral) și a fibrelor vegetale mari (broccoli, fasole verde, ciuperci).
 
 ---
 
-## 5. Database Schema (Prisma Blueprint)
+## 5. Functional Modules & UI Architecture
 
-```prisma
-generator client {
-  provider = "prisma-client-js"
-}
+### 1. Dashboard & Metric Overview
+* Carduri principale: Greutate Start, Greutate Curentă, Medie 7 zile, $\Delta$ Total, Status Misiune curentă.
+* Target Progress Bar (progresul către atingerea misiunii de Cutting/Bulking).
+* Grafic interactiv `fl_chart`: Evoluția greutății zilnice vs. Medie mobilă pe 7 zile vs. Linie de target.
 
-datasource db {
-  provider = "sqlite" // Sau "postgresql" cu env("DATABASE_URL")
-  url      = env("DATABASE_URL")
-}
+### 2. Daily Logger (Offline-First)
+* Input rapid pentru greutatea de dimineață.
+* Selector dinamic pentru cină bazat pe meniul personal.
+* Calculator pesimist de calorii pentru activități fizice (înot, sală cu MET ponderat, cardio).
+* Salvare locală automată offline cu sincronizare în fundal când revine conexiunea.
 
-model User {
-  id                  String       @id @default(cuid())
-  email               String?      @unique
-  username            String       @unique
-  firstName           String
-  lastName            String
-  sex                 String       // "MALE" | "FEMALE" | "OTHER"
-  birthDate           DateTime
-  heightCm            Float
-  profileStartWeight  Float
-  dailyTargetCalories Int          @default(2300)
-  createdAt           DateTime     @default(now())
-  updatedAt           DateTime     @updatedAt
+### 3. Workout Tracker & Split Engine
+* **Bibliotecă de 30+ exerciții** pe toate grupele musculare (Piept, Spate, Picioare, Umeri, Brațe, Core, Cardio).
+* **Șabloane gata configurate:** Push Day, Pull Day, Leg Day, Full Body, Upper Body, Cardio & HIIT.
+* **Logger activ de antrenament:** Cronometru live, setare greutăți (kg), repetări, RPE și bifare serii cu feedback haptic.
+* **Rest Timer cu vibrație:** Cronometru de pauză între serii (90s/120s) cu butoane `-15s` / `+30s` și vibrație automată la 0.
+* **Calcul automat de volum (kg)** și sincronizare a caloriilor arse cu jurnalul zilnic.
 
-  dailyEntries        DailyEntry[]
-  missions            Mission[]
-}
+### 4. Panda Eats AI Coach & Personal Recipe Manager
+* **Scanare Etichetă & Analiză Multimodală (Computer Vision):** Trimitere poze cu etichete nutriționale sau alimente direct din cameră sau galerie. Extragere automată macronutrienți per 100g și calcul porții cântărite.
+* **Scaner Coduri de Bare la 60 FPS:** Scanare video instantanee a codurilor de bare din magazin prin OpenFoodFacts cu vibrație tactilă de confirmare.
+* **Chat Interactiv AI:** Consultanță nutrițională personalizată cu cascadă automată multi-model Gemini.
+* **Salvare Rețete în Meniu Personal:** Adăugare directă din chat sau scaner în catalogul propriu de rețete.
 
-model Mission {
-  id                 String       @id @default(cuid())
-  userId             String
-  missionType        String       // "CUTTING" | "BULKING"
-  missionStartWeight Float
-  targetWeight       Float
-  status             String       @default("ACTIVE") // "ACTIVE" | "ACCOMPLISHED" | "ABANDONED"
-  startedAt          DateTime     @default(now())
-  achievedAt         DateTime?
+### 5. Clinical Health Reports & Multi-Format Exports
+* **Raport Medical PDF A4:** Generare document printabil cu parametri clinici (BMR, TDEE, deficit, ritm săptămânal, aderență).
+* **Export Excel CSV (UTF-8 BOM)** și **Backup complet JSON** pentru proprietate totală asupra datelor.
 
-  user               User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
+### 6. Missions Hub
+* Misiunea Activă cu indicator de status strict ($< \text{Target}$ pentru Cutting, $> \text{Target}$ pentru Bulking).
+* Estimare ETA dinamică bazată pe ritmul săptămânal real.
+* Confeti la atingerea țintei și istoric complet al misiunilor îndeplinite.
 
-model DailyEntry {
-  id              String       @id @default(cuid())
-  userId          String
-  date            DateTime     // Normalizat la YYYY-MM-DD
-  weight          Float?       // Greutate cântărită dimineața (0.1 kg precizie)
-  rollingAvg7Days Float?       // Calculat automat pe ultimele 7 zile
-  swimming        Boolean      @default(false)
-  planFollowed    Boolean      @default(true)
-  caloriesIn      Int?         // Calorii ingerate
-  caloriesOut     Int?         // Calorii consumate / arse prin efort
-  netCalories     Int?         // caloriesIn - (caloriesOut || 0)
-  selectedDinner  String?      // "A" | "B" | "C" | "CUSTOM"
-  notes           String?
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
-
-  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, date])
-}
-
-model MealRecipe {
-  id          String   @id @default(cuid())
-  category    String   // "BREAKFAST" | "SNACK" | "DINNER"
-  code        String?  // ex: "DINNER_A", "DINNER_B", "DINNER_C"
-  title       String
-  ingredients String   // JSON sau text detaliat
-  calories    Int
-  proteinG    Float?
-  carbsG      Float?
-  fatG        Float?
-  instructions String?
-}
-```
+### 7. Profile, Setări & Notificări Locale
+* Date personale, calcul vârstă, vizualizare greutate inițială blocată.
+* **Mementouri Locale Programate:** Reamintire zilnică pentru cântărire dimineața (ex: 07:30) și salvare jurnal seara (ex: 21:00).
+* **Card Descărcare Nativă Android:** Buton direct pentru descărcarea fișierului `PandaFit.apk`.
 
 ---
 
-## 6. Functional Modules & UI Architecture
+## 6. Native Packaging & CI/CD Pipeline
 
-1. **Dashboard & Metric Overview:**
-   * Carduri principale: Greutate Start, Greutate Curentă, Medie 7 zile, $\Delta$ Total, Status Misiune curentă.
-   * Target Progress Bar (progresul către atingerea misiunii de Cutting/Bulking).
-   * Grafic interactiv: Evoluția greutății zilnice vs. Medie mobilă pe 7 zile vs. Linie de target.
-
-2. **Daily Logger (Quick Modal / Inline Card):**
-   * Input rapid pentru greutatea de dimineață.
-   * Selector dinamic pentru cină bazat pe meniul personal (Rețete predefinite A/B/C + Rețete personalizate).
-   * Calculator pesimist de calorii pentru activități fizice (înot, sală cu MET ponderat, cardio).
-   * Input Calorii (Ingerate, Consumate) cu calcul automat al caloriilor nete.
-
-3. **Panda Eats AI Coach & Personal Recipe Manager:**
-   * **Scanare Etichetă & Analiză Multimodală (Computer Vision):** Trimitere poze cu etichete nutriționale / produse direct din cameră sau galerie. Extragere automată macronutrienți per 100g și calcul porții cântărite pentru obiectivele curente.
-   * **Chat Interactiv AI:** Consultanță nutrițională personalizată în funcție de BMR, TDEE și target caloric.
-   * **Generare Meniuri Tailored:** Sugestii de mese cu ingrediente cântărite crud/uscat și respectarea încărcăturii glicemice.
-   * **Carduri Inline Persistente:** Meniurile generate sunt atașate fiecărui răspuns și salvate persistent în istoricul conversației.
-   * **Salvare Rețete în Meniu Personal:** Buton instant de adăugare în meniul propriu pentru selecție rapidă în Daily Logger.
-   * **Dialog Configurare Gemini API Key:** Ghid în 3 pași cu salvare securizată pe dispozitiv.
-
-4. **Missions Hub:**
-   * Misiunea Activă cu indicator de status strict ($< \text{Target}$ pentru Cutting, $> \text{Target}$ pentru Bulking).
-   * Sărbătorire cu confeti la atingerea țintei.
-   * Secțiunea **"Missions Accomplished"** cu istoricul tuturor obiectivelor atinse cu succes.
-
-5. **Profile & Settings:**
-   * Date personale, calcul automat vârstă, blocare automată a greutății de start după prima intrare.
-   * Informații analitice: BMR (Basal Metabolic Rate), TDEE (Mentenanță) și Target Caloric recomandat.
+* **GitHub Pages Web Deployment:** Automatizat prin `.github/workflows/deploy.yml`.
+* **Automated Android APK Release:** Automatizat prin `.github/workflows/build-apk.yml`, cu publicare automată în GitHub Releases la adresa `https://github.com/LiviuOloi/panda-fit/releases/tag/mobile-latest`.
+* **Splash Screen Dark & App Icons:** Iconițe adaptive pe toate densitățile Android/iOS și pornire fără flash alb (`#0F172A`).

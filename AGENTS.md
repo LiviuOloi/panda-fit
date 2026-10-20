@@ -55,6 +55,9 @@ Every AI agent working on PandaFit assumes the role of:
 | **Local Storage / Cache** | `shared_preferences` / `hive` | Fast local caching of credentials, active preferences, and offline pending entries. |
 | **Design System** | **Material 3 Custom Dark Theme** | Emerald (`#10B981`), Cyan (`#06B6D4`), Slate (`#0F172A`, `#1E293B`), Amber (`#F59E0B`). Glassmorphism cards, micro-animations. |
 | **AI Engine** | **Google Generative AI (`google_generative_ai` / Gemini 1.5/2.0)** | Live generative nutrition coach with multi-model fallback cascade, biometric prompt injection, on-device API key persistence, and deterministic offline fallback. |
+| **Barcode & Vision** | `mobile_scanner` & OpenFoodFacts | Real-time 60 FPS camera barcode scanner with instant tactile haptic feedback. |
+| **Notifications** | `flutter_local_notifications` & `timezone` | On-device scheduled reminders (morning weigh-in, evening habits) without cloud dependencies. |
+| **Report Generation** | `pdf` & `printing` | Printable clinical A4 PDF health summaries, Excel CSV, and JSON backups. |
 | **Icons & Media** | `flutter_lucide` / Material Symbols | Consistent, minimalist iconography for health, weight, swimming, and meals. |
 
 ---
@@ -139,6 +142,28 @@ The user works toward structured **Missions**:
   - Standard fitness trackers heavily overestimate active calories burned. PandaFit uses evidence-based conservative MET values with strict discounting for resistance training (resting set intervals) to prevent accidental caloric surplus.
   - Swimming: Calorie burn computed dynamically based on body weight and duration.
   - Exercise toggles: Supports both duration-based MET calculation and direct custom calorie override.
+
+### 4.7 Workout Tracker & Split Engine
+* **Exercise Library:** 30+ exercises across all muscle groups (Chest, Back, Legs, Shoulders, Arms, Core, Cardio).
+* **Workout Splits:** Push, Pull, Legs, Full Body, Upper Body, Cardio & HIIT.
+* **Volume Tracking:** Total workout volume computed as $\sum (\text{weight} \times \text{reps})$ for completed sets.
+* **Rest Timer:** Dynamic 90s/120s timer with $-15\text{s} / +30\text{s}$ controls and automatic haptic vibration on completion.
+* **Daily Sync:** Finished workouts sync active calories burned to the Daily Logger using pessimistic MET discounting.
+
+### 4.8 Clinical Health Reports & Multi-Format Exports
+* **KPI Calculations:** BMR (Mifflin-St Jeor), Maintenance TDEE, Caloric Deficit, Weekly Velocity (kg/week), Diet Adherence, and Logging Streak.
+* **Export Formats:**
+  - Printable Clinical PDF A4 report.
+  - Excel / CSV spreadsheet with UTF-8 BOM encoding.
+  - Complete JSON backup.
+
+### 4.9 Offline-First Resilience & Sync Queue
+* **Cache-First Write-Through:** Daily weigh-ins and workouts save immediately to local storage (`SharedPreferences`).
+* **Offline Sync Queue:** If network/Supabase is unreachable (e.g. gym basement), entries append to `pandafit_pending_entries` and automatically sync to Supabase upon the next network connection.
+
+### 4.10 Local Scheduled Notifications
+* **Morning Reminder:** Configurable daily alarm (default 07:30 AM) for empty-stomach weigh-ins.
+* **Evening Reminder:** Configurable daily alarm (default 21:00 PM) for logging meals and workouts.
 
 ---
 
@@ -306,11 +331,19 @@ panda_fit/
 │       │   ├── data/
 │       │   ├── domain/
 │       │   └── presentation/
+│       ├── workout/           # Split templates, exercise library, active session, rest timer
+│       │   ├── data/
+│       │   ├── domain/
+│       │   └── presentation/
 │       ├── missions/          # Active mission progress bar, mission history
 │       │   ├── data/
 │       │   ├── domain/
 │       │   └── presentation/
-│       └── nutrition_guide/   # Predefined meal cards, ingredients, weighing guidelines
+│       ├── nutrition_guide/   # Predefined meal cards, ingredients, AI coach, barcode scanner
+│       │   ├── data/
+│       │   ├── domain/
+│       │   └── presentation/
+│       └── reports/           # Clinical PDF generation, CSV and JSON data export
 │           ├── data/
 │           ├── domain/
 │           └── presentation/

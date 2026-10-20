@@ -15,7 +15,9 @@ graph TD
         State["State Management (Riverpod AsyncNotifiers & Providers)"]
         Domain["Domain Layer (Entities, Pure Invariant Calculations)"]
         Data["Data Layer (Repositories & Remote/Local Sources)"]
-        LocalCache["Local Cache / Storage (Hive / SharedPreferences)"]
+        LocalCache["Local Storage & Offline Queue (SharedPreferences)"]
+        CameraEngine["Camera & Barcode Engine (mobile_scanner)"]
+        NotifEngine["Local Notification Engine (flutter_local_notifications)"]
     end
 
     subgraph Cloud ["Supabase Cloud (100% Free Tier)"]
@@ -26,10 +28,17 @@ graph TD
         RLS["Row Level Security (RLS Engine)"]
     end
 
+    subgraph ThirdParty ["External Free APIs"]
+        Gemini["Google Generative AI (Gemini 1.5/2.0)"]
+        OpenFoodFacts["OpenFoodFacts REST API"]
+    end
+
     UI --> State
     State --> Domain
     State --> Data
     Data --> LocalCache
+    UI --> CameraEngine
+    UI --> NotifEngine
     Data -->|HTTPS / WSS| Auth
     Data -->|HTTPS / REST| PostgREST
     Data -->|WebSocket| Realtime
@@ -37,6 +46,8 @@ graph TD
     Realtime --> RLS
     RLS --> Postgres
     Auth --> Postgres
+    Data --> Gemini
+    Data --> OpenFoodFacts
 ```
 
 ---
@@ -63,40 +74,40 @@ feature_name/
 
 ### Layer Rules
 1. **Domain Layer:** Pure Dart only. No imports of `flutter/material.dart` or `supabase_flutter`. This ensures 100% unit-testability without mocks.
-2. **Data Layer:** Handles network calls, offline caching, and DTO-to-Domain mapping. Catches Supabase PostgREST exceptions and transforms them into domain failures.
+2. **Data Layer:** Handles network calls, offline caching, and DTO-to-Domain mapping. Catches Supabase PostgREST exceptions and falls back to local storage.
 3. **Presentation Layer:** Watches Riverpod providers. Reacts declaratively to `AsyncValue.loading()`, `AsyncValue.error()`, and `AsyncValue.data()`.
 
 ---
 
 ## 3. Data Flow & Offline-First Strategy
 
-To ensure seamless operation even without network access (e.g. morning weigh-in in an area with poor signal), PandaFit employs a **Cache-First Write-Through** pattern:
+To ensure seamless operation even without network access (e.g. morning weigh-in or gym basement with zero signal), PandaFit employs a **Cache-First Write-Through with Pending Queue** pattern:
 
 ```mermaid
 sequenceDiagram
     autonumber
     actor User
-    participant UI as DailyLogger UI
-    participant Riverpod as DailyEntriesNotifier
-    participant Repo as DailyEntriesRepository
-    participant Local as Local Cache (Hive)
+    participant UI as DailyLogger UI / WorkoutScreen
+    participant Riverpod as DailyEntriesNotifier / WorkoutController
+    participant Repo as DailyEntryRepository / WorkoutRepository
+    participant Local as SharedPreferences (Cache & Queue)
     participant Remote as Supabase Remote API
 
-    User->>UI: Submit Morning Weigh-in (102.4 kg)
-    UI->>Riverpod: logDailyEntry(entryData)
+    User->>UI: Submit Weigh-in (102.4 kg) or Workout Session
+    UI->>Riverpod: saveDailyEntry(entry) / finishWorkout()
     Riverpod->>Repo: saveDailyEntry(entry)
-    Repo->>Local: Write entry to local storage
+    Repo->>Local: Write entry to local cache immediately
     Local-->>Repo: Saved successfully
     Repo-->>Riverpod: Optimistic update local state
-    Riverpod-->>UI: UI immediately reflects new weight & updated 7-day MA
+    Riverpod-->>UI: UI immediately updates charts & metrics
 
-    par Sync to Cloud in Background
+    par Attempt Sync to Cloud
         Repo->>Remote: POST /daily_entries (Upsert)
-        alt Online
+        alt Online (Success)
             Remote-->>Repo: 201 Created / Updated
-            Repo->>Local: Mark entry as synced
+            Repo->>Local: Clear pending queue entry
         else Offline / Network Failure
-            Repo->>Local: Mark entry as pending_sync
+            Repo->>Local: Append to pandafit_pending_entries queue
             Note over Repo,Local: Background sync will retry upon network reconnect
         end
     end
@@ -106,7 +117,7 @@ sequenceDiagram
 
 ## 4. Navigation & Responsive Layout Architecture
 
-PandaFit uses **GoRouter** with a responsive layout shell that dynamically adapts between mobile viewports and desktop/tablet screens:
+PandaFit uses a responsive layout shell that dynamically adapts between mobile viewports and desktop/tablet screens:
 
 ```mermaid
 graph LR
@@ -115,7 +126,7 @@ graph LR
     end
 
     subgraph Mobile ["Mobile (< 768px)"]
-        BottomNav["BottomNavigationBar (Fixed Bottom, 4 Tabs)"]
+        BottomNav["NavigationBar (6 Tabs, Safe Area, Compact Labels)"]
         MobileDrawer["Contextual Bottom Sheet Modals"]
     end
 
@@ -129,15 +140,15 @@ graph LR
     VP -->|>= 768px| Desktop
 ```
 
-### Core Route Tree
-| Route Path | Screen View | Description |
-| :--- | :--- | :--- |
-| `/login` | `LoginScreen` | Supabase Auth (Email / Password & Magic Link). |
-| `/dashboard` | `DashboardScreen` | Daily weight overview, 7-day MA chart, active mission status. |
-| `/logger` | `DailyLoggerScreen` | Quick weigh-in, calories, dinner choice, swimming flag. |
-| `/missions` | `MissionsHubScreen` | Active mission tracker, target distance, historical accomplished missions. |
-| `/nutrition` | `AiNutritionistScreen` / `NutritionGuideScreen` | **Panda Eats AI Coach**: Gemini dynamic meal generation with multi-model fallback, inline meal card persistence, custom recipe manager (`CustomRecipeDialog`), and API key setup (`GeminiApiKeyDialog`). |
-| `/profile` | `ProfileScreen` | User statistics, height, age, read-only starting weight inspector. |
+### Core Module Tree (6 Tabs)
+| Tab Index | Tab Label | Screen View | Description |
+| :---: | :--- | :--- | :--- |
+| **0** | **Dashboard** | `DashboardScreen` | 7-day MA interactive chart, quick stats, delta from start, streak counters. |
+| **1** | **Log** | `DailyLoggerScreen` | Morning weigh-in, habits, pessimistic activity calorie burn, dinner selector, offline-aware save. |
+| **2** | **Workout** | `WorkoutHomeScreen` | 30+ exercise library, split templates, live workout logger, rest timer with vibration, volume tracking. |
+| **3** | **Missions** | `MissionsScreen` | Active cutting/bulking progress, milestone forecasting ETA, historical accomplished missions. |
+| **4** | **Eats AI** | `NutritionGuideScreen` / `AiNutritionistScreen` | Multi-turn AI nutrition coach, photo label analysis, 60 FPS barcode scanner, custom recipe management. |
+| **5** | **Profile** | `ProfileScreen` | Biometrics, locked starting weight, notification reminders, clinical PDF report generator, direct Android APK download. |
 
 ---
 
@@ -159,9 +170,9 @@ graph TD
     RLSEngine -->|auth.uid() = user_id| UserData
 ```
 
-1. **Authentication:** Supabase Auth manages sessions. The client securely persists the session token via Flutter's `flutter_secure_storage` or encrypted shared preferences.
-2. **Row Level Security (RLS):** Every query is executed under the context of `auth.uid()`. Even if an attacker inspects network traffic or intercepts client-side code, they cannot read or write another user's rows.
-3. **Database Guardrails:** A PostgreSQL trigger (`check_profile_start_weight_lock`) rejects any database `UPDATE` modifying `profile_start_weight` if the user already has logged daily entries.
+1. **Authentication:** Supabase Auth manages sessions. The client securely persists the session token.
+2. **Row Level Security (RLS):** Every query is executed under the context of `auth.uid()`. Even if an attacker inspects network traffic, they cannot read or write another user's rows.
+3. **Database Guardrails:** A PostgreSQL trigger (`check_profile_start_weight_lock`) strictly rejects any database `UPDATE` modifying `profile_start_weight` if the user already has logged daily entries.
 
 ---
 
@@ -182,11 +193,6 @@ PandaFit implements a modern, deep dark-mode theme utilizing glassmorphism and t
 | `textPrimary` | `#F8FAFC` | High-contrast body and header text |
 | `textSecondary` | `#94A3B8` | Subtle metadata, timestamps, and unit labels (`kg`, `kcal`) |
 
-### 6.2 Responsive Breakpoints
-* **Mobile (Compact):** `< 600 dp` — Single column, bottom navigation, card stacks.
-* **Tablet (Medium):** `600 dp - 1024 dp` — 2-column grid, compact navigation rail.
-* **Desktop / Web (Expanded):** `> 1024 dp` — Expansive multi-column dashboard, left fixed navigation bar, comprehensive interactive charts with hover indicators.
-
 ---
 
 ## 7. State Management Pipelines (Riverpod)
@@ -194,9 +200,9 @@ PandaFit implements a modern, deep dark-mode theme utilizing glassmorphism and t
 ```mermaid
 graph LR
     subgraph Data Pipeline
-        DB[(Supabase DB)] -->|Stream / Watch| Repo[DailyEntriesRepository]
+        DB[(Supabase DB)] -->|Stream / Watch| Repo[DailyEntryRepository]
         Repo -->|AsyncValue| Provider[dailyEntriesProvider]
-        RecipesRepo[RecipesRepository] -->|AsyncValue| AllRecipes[allRecipesProvider]
+        WorkoutRepo[WorkoutRepository] -->|AsyncValue| Sessions[workoutSessionsProvider]
         DeviceStorage[SharedPreferences] --> KeyProvider[geminiApiKeyProvider]
     end
 
@@ -211,67 +217,64 @@ graph LR
         MAEngine --> ChartWidget[WeightProgressChart]
         DeltaEngine --> MetricCard[MetricSummaryCard]
         MissionEngine --> MissionBar[MissionProgressBar]
-        AllRecipes --> DinnerSelector[DailyLoggerScreen & RecipeCards]
+        Sessions --> WorkoutUI[WorkoutHomeScreen & ActiveWorkoutScreen]
         KeyProvider --> AICoach[AiNutritionistScreen]
     end
 ```
 
-By computing moving averages and deltas through pure **derived Riverpod providers**, UI components never re-calculate complex math in their render trees, guaranteeing smooth 60fps animations and instant chart rendering.
+By computing moving averages and deltas through pure **derived Riverpod providers**, UI components never re-calculate complex math in their render trees, guaranteeing smooth 60fps animations.
 
 ---
 
-## 8. Authentication & Onboarding Session Lifecycle
-
-PandaFit uses a reactive **SessionGate** to orchestrate seamless authentication and onboarding transitions:
+## 8. Workout Tracker & Split Engine Architecture
 
 ```mermaid
 graph TD
-    A[App Launch / main.dart] --> B[SessionGate]
-    B --> C{Active Supabase Session?}
-    C -- No / Signed Out --> D[AuthScreen: Sign In / Sign Up]
-    C -- Yes --> E{Profile exists in PostgreSQL?}
-    E -- Fetching --> F[Loading Spinner / Syncing Metrics]
-    E -- No Profile --> G[OnboardingWizardScreen: 3 Steps]
-    E -- Profile Found --> H[MainNavigationScreen: 5 Modules]
-    
-    G -->|Create Profile + Active Mission| E
-    D -->|Supabase Auth Callback| C
+    Template[Choose Template / Custom Workout] --> ActiveSession[ActiveWorkoutNotifier: Stopwatch Running]
+    ActiveSession --> AddExercise[Select Exercise from 30+ Library]
+    AddExercise --> LogSets[Enter Weight kg, Reps, RPE]
+    LogSets --> CheckSet[Tap Set Checkbox: Haptic Medium Impact]
+    CheckSet --> AutoRestTimer[Trigger RestTimerNotifier: 90s/120s Countdown]
+    AutoRestTimer --> TimerFinished[Timer Hits 0: Haptic Vibrate Pulse]
+    LogSets --> FinishWorkout[Finish Workout: Haptic Heavy Impact]
+    FinishWorkout --> CalcVolume[Aggregate Volume kg & Duration]
+    FinishWorkout --> PessimisticMET[Compute Burned Calories via Discounted MET]
+    PessimisticMET --> SyncDaily[Auto-sync with Daily Logger & Save to SharedPreferences]
 ```
-
-### Onboarding Invariant Enforcements:
-1. **Starting Weight Immutability (`profile_start_weight`):** Set once during onboarding. Validated to `0.1 kg` precision. Trigger-locked in PostgreSQL once daily entries begin.
-2. **First Mission Directionality:**
-   - **Cutting:** Requires $\text{Target Weight} < \text{Start Weight}$.
-   - **Bulking:** Requires $\text{Target Weight} > \text{Start Weight}$.
-   - $\text{Target Weight} == \text{Start Weight}$ is strictly rejected at the validation layer.
-3. **Dynamic Age Derivation:** Derived strictly from `birth_date` and calendar anniversary, never stored as a static integer.
 
 ---
 
-## 9. Panda Eats AI Coach Engine Architecture
+## 9. Barcode Scanner & Computer Vision Pipeline
 
 ```mermaid
 graph TD
-    UserQuery["User Prompt, Quick Chip or Photo Scan (Camera / Gallery)"] --> MultimodalCheck{"Has Attached Image?"}
-    MultimodalCheck -->|Yes| DataPartInject["Encode DataPart (image/jpeg) + Prompt"]
-    MultimodalCheck -->|No| TextOnlyInject["Standard Text Content"]
-    DataPartInject --> GuardrailCheck["Biometric Context Injection (BMR, TDEE, Deficit, Glycemic Rules)"]
-    TextOnlyInject --> GuardrailCheck
-    GuardrailCheck --> FallbackCascade{"Gemini API Call Cascade"}
-    
-    FallbackCascade -->|Try 1| Model1["gemini-1.5-flash-latest"]
-    FallbackCascade -->|Fallback 2| Model2["gemini-1.5-flash"]
-    FallbackCascade -->|Fallback 3| Model3["gemini-2.0-flash"]
-    FallbackCascade -->|Fallback 4| Model4["gemini-pro"]
-    FallbackCascade -->|Offline / No Network| OfflineEngine["Deterministic Rule-Based Nutrition Engine"]
-    
-    Model1 --> ParsedResult["Structured JSON & Text Response"]
-    Model2 --> ParsedResult
-    Model3 --> ParsedResult
-    Model4 --> ParsedResult
-    OfflineEngine --> ParsedResult
-    
-    ParsedResult --> AttachInline["Attach Meal Cards Inline to Current Chat Turn"]
-    AttachInline --> LocalPersistence["Save to SharedPreferences (Chat, Image Base64 & Recipes)"]
-    AttachInline --> UI["Render Inline Cards with 'Save to My Menu'"]
+    OpenScanner[Open BarcodeScannerDialog] --> CameraStream[mobile_scanner 60 FPS Camera Stream]
+    CameraStream --> Detection[Barcode Captured: Instant Haptic Pulse]
+    Detection --> FetchAPI[Query OpenFoodFacts API]
+    FetchAPI --> ParseProduct[Parse Macros, NutriScore, EcoScore, Nova]
+    ParseProduct --> UserAction{User Selection}
+    UserAction -->|Convert to Recipe| SaveRecipe[Save to Personal Recipes Catalog]
+    UserAction -->|Consult AI Coach| InjectAI[Direct Context Injection into Panda Eats AI]
 ```
+
+---
+
+## 10. Clinical Health Reports & Multi-Format Export Engine
+
+The `ExportService` computes clinical-grade metrics from raw daily entries:
+- **Biometric Formulas:** Mifflin-St Jeor BMR, Physical Activity Level (PAL) Maintenance TDEE, Caloric Deficit, Diet Adherence Rate, Weight Velocity (kg/week).
+- **Export Outputs:**
+  1. **Printable PDF Report:** Multi-page A4 document with patient biometrics, KPI overview, trend curves, and meal logs.
+  2. **CSV Spreadsheet:** UTF-8 BOM formatted Excel file with complete column headers.
+  3. **JSON Backup:** Full database serialization for offline archiving and restoration.
+
+---
+
+## 11. Local Scheduled Notifications Architecture
+
+The `NotificationService` manages on-device timezone-aware notifications without cloud messaging servers:
+- **Morning Weigh-in Reminder:** Daily recurring at user-configured time (default 07:30 AM).
+- **Evening Journal Reminder:** Daily recurring at user-configured time (default 21:00 PM).
+- **Platform Implementations:**
+  - **Android:** AndroidNotificationChannel with high priority, custom launcher icons, and exact alarm support.
+  - **iOS:** DarwinNotificationDetails with alert, badge, and sound support.
