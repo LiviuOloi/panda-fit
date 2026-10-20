@@ -48,3 +48,29 @@ jobs:
           name: PandaFit-Release-APK
           path: build/app/outputs/flutter-apk/app-release.apk
           retention-days: 14
+
+      - name: Prepare APK for Release
+        run: cp build/app/outputs/flutter-apk/app-release.apk PandaFit.apk
+
+      - name: Publish to GitHub Releases
+        uses: softprops/action-gh-release@v2
+        if: github.ref == 'refs/heads/main'
+        with:
+          tag_name: mobile-latest
+          name: "PandaFit Native Android Release"
+          make_latest: true
+          body: |
+            ## 🐼 PandaFit Mobile Release (Android)
+
+            **📥 Descărcare directă:** [Descarcă PandaFit.apk](https://github.com/LiviuOloi/panda-fit/releases/download/mobile-latest/PandaFit.apk)
+
+            ### ✨ Ce include această versiune:
+            * **PandaFit Native App Icons:** Iconițe adaptive dark slate & emerald pentru Android.
+            * **Instant Dark Splash Screen:** Pornire nativă fără ecran alb (fundal `#0F172A` cu sigla centrată).
+            * **Ergonomie mobilă:** Bară de navigație compactă, Safe Area pentru notch / gesturi.
+            * **Feedback Haptic:** Vibrații la completarea seriilor de sală, expirarea Rest Timer-ului și salvarea jurnalului.
+            * **Derulare lină cu tastatură:** Închidere automată a tastaturii la scroll (`onDrag`).
+            * **Suport complet offline:** Caching local pentru antrenamente și cântăriri.
+          files: PandaFit.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

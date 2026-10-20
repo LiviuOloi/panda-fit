@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/widgets/glass_card.dart';
 import '../../../../core/widgets/panda_button.dart';
@@ -207,6 +208,51 @@ class ProfileScreen extends ConsumerWidget {
                           entries: entries,
                           activeMission: ref.read(activeMissionProvider).value,
                         );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Mobile App Download Card
+              GlassCard(
+                borderColor: AppColors.cyan.withValues(alpha: 0.4),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Row(
+                      children: [
+                        Icon(Icons.android, color: AppColors.cyan, size: 20),
+                        SizedBox(width: 8),
+                        Text(
+                          'Aplicație Nativă Android (APK)',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Instalează PandaFit direct pe telefonul tău cu Android pentru vibrații tactile la sală, pornire rapidă dark și scanare cu camera.',
+                      style: TextStyle(fontSize: 12, color: AppColors.textSecondary, height: 1.4),
+                    ),
+                    const SizedBox(height: 14),
+                    PandaButton(
+                      label: 'Descarcă PandaFit.apk',
+                      icon: Icons.download_rounded,
+                      variant: PandaButtonVariant.secondary,
+                      width: double.infinity,
+                      onPressed: () async {
+                        final uri = Uri.parse(
+                          'https://github.com/LiviuOloi/panda-fit/releases/download/mobile-latest/PandaFit.apk',
+                        );
+                        if (await canLaunchUrl(uri)) {
+                          await launchUrl(uri, mode: LaunchMode.externalApplication);
+                        }
                       },
                     ),
                   ],
