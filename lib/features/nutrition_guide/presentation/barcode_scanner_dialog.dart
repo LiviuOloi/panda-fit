@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../../core/constants/app_colors.dart';
@@ -118,6 +119,7 @@ class _BarcodeScannerDialogState extends ConsumerState<BarcodeScannerDialog> {
       final raw = barcode.rawValue;
       if (raw != null && raw.length >= 6) {
         _hasScanned = true;
+        HapticFeedback.mediumImpact();
         _fetchBarcode(raw);
         break;
       }

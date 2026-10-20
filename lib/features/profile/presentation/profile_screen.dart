@@ -7,6 +7,7 @@ import '../../../../core/widgets/panda_button.dart';
 import '../../auth/presentation/auth_controller.dart';
 import '../../reports/presentation/export_report_dialog.dart';
 import 'profile_controller.dart';
+import 'widgets/notification_settings_card.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -213,6 +214,10 @@ class ProfileScreen extends ConsumerWidget {
                   ],
                 ),
               ),
+              const SizedBox(height: 16),
+
+              // Notification Settings Card
+              const NotificationSettingsCard(),
               const SizedBox(height: 16),
 
               // Mobile App Download Card

@@ -302,7 +302,7 @@ class _DailyLoggerScreenState extends ConsumerState<DailyLoggerScreen> {
 
       final repo = ref.read(dailyEntryRepositoryProvider);
       final existingEntries = ref.read(dailyEntriesProvider).value;
-      await repo.saveDailyEntry(entry, existingEntries: existingEntries);
+      final result = await repo.saveDailyEntry(entry, existingEntries: existingEntries);
 
       // Invalidate to refresh Dashboard, Missions & Charts
       ref.invalidate(dailyEntriesProvider);
@@ -316,8 +316,12 @@ class _DailyLoggerScreenState extends ConsumerState<DailyLoggerScreen> {
       final dateLabel = DateFormat('d MMM yyyy').format(_selectedDate);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Jurnal salvat ($dateLabel)! Greutate: ${roundedWeight.toStringAsFixed(1)} kg | In: $calIn kcal | Arse: $calOut kcal 🐼'),
-          backgroundColor: AppColors.emerald,
+          content: Text(
+            result.isOffline
+                ? 'Jurnal salvat local offline ($dateLabel)! Se va sincroniza automat la revenirea semnalului 📶'
+                : 'Jurnal salvat ($dateLabel)! Greutate: ${roundedWeight.toStringAsFixed(1)} kg | In: $calIn kcal | Arse: $calOut kcal 🐼',
+          ),
+          backgroundColor: result.isOffline ? AppColors.cyan : AppColors.emerald,
         ),
       );
 

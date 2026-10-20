@@ -13,6 +13,7 @@ import 'features/workout/presentation/workout_home_screen.dart';
 
 import 'package:intl/date_symbol_data_local.dart';
 
+import 'core/services/notification_service.dart';
 import 'features/auth/presentation/session_gate.dart';
 
 void main() async {
@@ -32,6 +33,11 @@ void main() async {
   // Initialize date formatting for Romanian and international locales
   try {
     await initializeDateFormatting('ro', null);
+  } catch (_) {}
+
+  // Initialize Local Notifications
+  try {
+    await NotificationService().initialize();
   } catch (_) {}
 
   // Initialize Supabase
