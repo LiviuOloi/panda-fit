@@ -56,6 +56,7 @@ dev_dependencies:
   riverpod_lint: ^2.3.10
   riverpod_generator: ^2.4.0
   build_runner: ^2.4.9
+  flutter_launcher_icons: ^0.14.4
 
 flutter:
   uses-material-design: true
@@ -63,3 +64,17 @@ flutter:
     - assets/recipes/
     - assets/icons/
     - assets/images/
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  remove_alpha_ios: true
+  image_path: "assets/images/panda_logo.png"
+  min_sdk_android: 21
+  adaptive_icon_background: "#0F172A"
+  adaptive_icon_foreground: "assets/images/panda_logo.png"
+  web:
+    generate: true
+    image_path: "assets/images/panda_logo.png"
+    background_color: "#0F172A"
+    theme_color: "#10B981"
