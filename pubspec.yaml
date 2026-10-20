@@ -45,6 +45,8 @@ dependencies:
   flutter_markdown_plus: ^1.0.12
   http: ^1.6.0
   mobile_scanner: ^7.4.2
+  pdf: ^3.13.1
+  printing: ^5.15.1
 
 dev_dependencies:
   flutter_test:

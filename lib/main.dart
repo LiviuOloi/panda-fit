@@ -8,6 +8,7 @@ import 'features/dashboard/presentation/dashboard_screen.dart';
 import 'features/missions/presentation/missions_screen.dart';
 import 'features/nutrition_guide/presentation/nutrition_guide_screen.dart';
 import 'features/profile/presentation/profile_screen.dart';
+import 'features/workout/presentation/workout_home_screen.dart';
 
 import 'features/auth/presentation/session_gate.dart';
 
@@ -53,6 +54,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     final screens = [
       DashboardScreen(onQuickLogPressed: () => setState(() => _currentIndex = 1)),
       DailyLoggerScreen(onSaved: () => setState(() => _currentIndex = 0)),
+      const WorkoutHomeScreen(),
       const MissionsScreen(),
       const NutritionGuideScreen(),
       const ProfileScreen(),
@@ -89,6 +91,11 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
               icon: Icon(Icons.edit_calendar_outlined, color: AppColors.textSecondary),
               selectedIcon: Icon(Icons.edit_calendar, color: AppColors.emerald),
               label: 'Log',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.fitness_center_outlined, color: AppColors.textSecondary),
+              selectedIcon: Icon(Icons.fitness_center, color: AppColors.emerald),
+              label: 'Workout',
             ),
             NavigationDestination(
               icon: Icon(Icons.flag_outlined, color: AppColors.textSecondary),

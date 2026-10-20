@@ -4,6 +4,7 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../../core/widgets/glass_card.dart';
 import '../../../../core/widgets/panda_button.dart';
 import '../../auth/presentation/auth_controller.dart';
+import '../../reports/presentation/export_report_dialog.dart';
 import 'profile_controller.dart';
 
 class ProfileScreen extends ConsumerWidget {
@@ -163,6 +164,51 @@ class ProfileScreen extends ConsumerWidget {
                     _buildDetailRow('Sex', profile.sex),
                     const Divider(color: AppColors.surfaceElevated),
                     _buildDetailRow('Daily Target Calories', '${profile.dailyTargetCalories} kcal'),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Health Reports & Data Export Section
+              GlassCard(
+                borderColor: AppColors.cyan.withValues(alpha: 0.35),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Row(
+                      children: [
+                        Icon(Icons.assessment_outlined, color: AppColors.cyan, size: 20),
+                        SizedBox(width: 8),
+                        Text(
+                          'Rapoarte & Export Date',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Generează rapoarte clinice PDF A4 cu media mobilă și deficitul caloric sau exportă datele tale în format Excel CSV / JSON.',
+                      style: TextStyle(fontSize: 12, color: AppColors.textSecondary, height: 1.4),
+                    ),
+                    const SizedBox(height: 14),
+                    PandaButton(
+                      label: 'Exportă Raport PDF / CSV / JSON',
+                      icon: Icons.file_download_outlined,
+                      variant: PandaButtonVariant.secondary,
+                      width: double.infinity,
+                      onPressed: () {
+                        ExportReportDialog.show(
+                          context,
+                          profile: profile,
+                          entries: entries,
+                          activeMission: ref.read(activeMissionProvider).value,
+                        );
+                      },
+                    ),
                   ],
                 ),
               ),

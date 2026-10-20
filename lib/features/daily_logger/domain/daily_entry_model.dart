@@ -72,4 +72,40 @@ class DailyEntry {
     }
     return map;
   }
+
+  DailyEntry copyWith({
+    String? id,
+    String? userId,
+    DateTime? entryDate,
+    double? weight,
+    double? rollingAvg7Days,
+    bool? swimming,
+    bool? planFollowed,
+    int? caloriesIn,
+    int? caloriesOut,
+    int? netCalories,
+    String? selectedDinner,
+    String? notes,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) {
+    final cIn = caloriesIn ?? this.caloriesIn;
+    final cOut = caloriesOut ?? this.caloriesOut;
+    return DailyEntry(
+      id: id ?? this.id,
+      userId: userId ?? this.userId,
+      entryDate: entryDate ?? this.entryDate,
+      weight: weight ?? this.weight,
+      rollingAvg7Days: rollingAvg7Days ?? this.rollingAvg7Days,
+      swimming: swimming ?? this.swimming,
+      planFollowed: planFollowed ?? this.planFollowed,
+      caloriesIn: cIn,
+      caloriesOut: cOut,
+      netCalories: netCalories ?? ((cIn ?? 0) - (cOut ?? 0)),
+      selectedDinner: selectedDinner ?? this.selectedDinner,
+      notes: notes ?? this.notes,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
 }

@@ -13,6 +13,7 @@ import '../../nutrition_guide/domain/recipe_model.dart';
 import '../../nutrition_guide/presentation/ai_nutritionist_screen.dart';
 import '../../nutrition_guide/presentation/barcode_scanner_dialog.dart';
 import '../../profile/presentation/profile_controller.dart';
+import '../../workout/presentation/workout_home_screen.dart';
 import '../domain/daily_entry_model.dart';
 
 class DailyLoggerScreen extends ConsumerStatefulWidget {
@@ -720,6 +721,21 @@ class _DailyLoggerScreenState extends ConsumerState<DailyLoggerScreen> {
                             'Add',
                             style: TextStyle(color: AppColors.cyan, fontWeight: FontWeight.bold),
                           ),
+                        ),
+                        const SizedBox(width: 4),
+                        IconButton(
+                          tooltip: 'Deschide Jurnalul de Sală (Serii & Repetări)',
+                          style: IconButton.styleFrom(
+                            backgroundColor: AppColors.emerald.withValues(alpha: 0.15),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          ),
+                          icon: const Icon(Icons.fitness_center, color: AppColors.emerald, size: 18),
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute<void>(builder: (context) => const WorkoutHomeScreen()),
+                            );
+                          },
                         ),
                       ],
                     ),

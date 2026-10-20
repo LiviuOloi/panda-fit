@@ -7,6 +7,7 @@ import '../../../../core/widgets/panda_button.dart';
 import '../../daily_logger/domain/daily_entry_model.dart';
 import '../../missions/domain/mission_model.dart';
 import '../../profile/presentation/profile_controller.dart';
+import '../../reports/presentation/export_report_dialog.dart';
 import '../widgets/metric_summary_card.dart';
 import '../widgets/weight_progress_chart.dart';
 
@@ -177,10 +178,33 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       ),
                     ],
                   ),
-                  PandaButton(
-                    label: 'Quick Log',
-                    icon: Icons.add,
-                    onPressed: widget.onQuickLogPressed,
+                  Row(
+                    children: [
+                      IconButton(
+                        tooltip: 'Rapoarte & Export Date (PDF, CSV, JSON)',
+                        style: IconButton.styleFrom(
+                          backgroundColor: AppColors.surfaceElevated,
+                          side: const BorderSide(color: AppColors.glassBorder),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        icon: const Icon(Icons.file_download_outlined, color: AppColors.cyan, size: 20),
+                        onPressed: () {
+                          if (profile == null) return;
+                          ExportReportDialog.show(
+                            context,
+                            profile: profile,
+                            entries: entries,
+                            activeMission: activeMission,
+                          );
+                        },
+                      ),
+                      const SizedBox(width: 8),
+                      PandaButton(
+                        label: 'Quick Log',
+                        icon: Icons.add,
+                        onPressed: widget.onQuickLogPressed,
+                      ),
+                    ],
                   ),
                 ],
               ),
