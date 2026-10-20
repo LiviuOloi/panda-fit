@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/widgets/glass_card.dart';
@@ -175,6 +176,8 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen> {
     );
 
     if (shouldSave == true && mounted) {
+      await HapticFeedback.heavyImpact();
+      if (!mounted) return;
       await ref.read(activeWorkoutProvider.notifier).finishWorkout(
             syncWithDailyLogger: syncDaily,
           );
@@ -736,10 +739,16 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen> {
                 size: 24,
               ),
               onPressed: () {
+                final willBeCompleted = !set.isCompleted;
+                if (willBeCompleted) {
+                  HapticFeedback.mediumImpact();
+                } else {
+                  HapticFeedback.selectionClick();
+                }
                 ref.read(activeWorkoutProvider.notifier).updateSet(
                       exIndex,
                       setIndex,
-                      isCompleted: !set.isCompleted,
+                      isCompleted: willBeCompleted,
                     );
               },
             ),

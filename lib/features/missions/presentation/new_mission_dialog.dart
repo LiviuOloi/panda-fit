@@ -113,6 +113,8 @@ class _NewMissionDialogState extends ConsumerState<NewMissionDialog> {
       ref.invalidate(activeMissionProvider);
 
       if (!mounted) return;
+      await HapticFeedback.mediumImpact();
+      if (!mounted) return;
       Navigator.of(context).pop(true);
 
       ScaffoldMessenger.of(context).showSnackBar(

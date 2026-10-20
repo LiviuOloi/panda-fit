@@ -241,6 +241,8 @@ class _AiNutritionistScreenState extends ConsumerState<AiNutritionistScreen> {
     final imageBytesToSend = _selectedImageBytes;
     if ((text.isEmpty && imageBytesToSend == null) || _isLoading) return;
 
+    await HapticFeedback.lightImpact();
+
     final promptText = text.isNotEmpty
         ? text
         : 'Please analyze this nutrition label image. Extract its macros per 100g, assess its glycemic quality, and calculate custom meal recipes fitting my goals.';
@@ -421,6 +423,7 @@ class _AiNutritionistScreenState extends ConsumerState<AiNutritionistScreen> {
             Expanded(
               child: ListView.builder(
                 controller: _scrollController,
+                keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                 itemCount: _messages.length,
                 itemBuilder: (context, index) {

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/constants/app_colors.dart';
 import 'core/network/supabase_client.dart';
@@ -16,6 +17,17 @@ import 'features/auth/presentation/session_gate.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Set immersive dark system UI styling for mobile
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.light,
+      statusBarBrightness: Brightness.dark,
+      systemNavigationBarColor: AppColors.surface,
+      systemNavigationBarIconBrightness: Brightness.light,
+    ),
+  );
 
   // Initialize date formatting for Romanian and international locales
   try {
@@ -79,47 +91,53 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
             top: BorderSide(color: AppColors.glassBorder, width: 1),
           ),
         ),
-        child: NavigationBar(
-          selectedIndex: _currentIndex,
-          backgroundColor: AppColors.surface,
-          indicatorColor: AppColors.emerald.withValues(alpha: 0.25),
-          onDestinationSelected: (index) {
-            setState(() {
-              _currentIndex = index;
-            });
-          },
-          destinations: const [
-            NavigationDestination(
-              icon: Icon(Icons.dashboard_outlined, color: AppColors.textSecondary),
-              selectedIcon: Icon(Icons.dashboard, color: AppColors.emerald),
-              label: 'Dashboard',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.edit_calendar_outlined, color: AppColors.textSecondary),
-              selectedIcon: Icon(Icons.edit_calendar, color: AppColors.emerald),
-              label: 'Log',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.fitness_center_outlined, color: AppColors.textSecondary),
-              selectedIcon: Icon(Icons.fitness_center, color: AppColors.emerald),
-              label: 'Workout',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.flag_outlined, color: AppColors.textSecondary),
-              selectedIcon: Icon(Icons.flag, color: AppColors.emerald),
-              label: 'Missions',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.restaurant_menu_outlined, color: AppColors.textSecondary),
-              selectedIcon: Icon(Icons.restaurant_menu, color: AppColors.emerald),
-              label: 'Panda Eats AI',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.person_outline, color: AppColors.textSecondary),
-              selectedIcon: Icon(Icons.person, color: AppColors.emerald),
-              label: 'Profile',
-            ),
-          ],
+        child: SafeArea(
+          top: false,
+          child: NavigationBar(
+            selectedIndex: _currentIndex,
+            backgroundColor: AppColors.surface,
+            indicatorColor: AppColors.emerald.withValues(alpha: 0.25),
+            height: 66,
+            labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+            onDestinationSelected: (index) {
+              HapticFeedback.selectionClick();
+              setState(() {
+                _currentIndex = index;
+              });
+            },
+            destinations: const [
+              NavigationDestination(
+                icon: Icon(Icons.dashboard_outlined, color: AppColors.textSecondary, size: 22),
+                selectedIcon: Icon(Icons.dashboard, color: AppColors.emerald, size: 22),
+                label: 'Dashboard',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.edit_calendar_outlined, color: AppColors.textSecondary, size: 22),
+                selectedIcon: Icon(Icons.edit_calendar, color: AppColors.emerald, size: 22),
+                label: 'Log',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.fitness_center_outlined, color: AppColors.textSecondary, size: 22),
+                selectedIcon: Icon(Icons.fitness_center, color: AppColors.emerald, size: 22),
+                label: 'Workout',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.flag_outlined, color: AppColors.textSecondary, size: 22),
+                selectedIcon: Icon(Icons.flag, color: AppColors.emerald, size: 22),
+                label: 'Missions',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.restaurant_menu_outlined, color: AppColors.textSecondary, size: 22),
+                selectedIcon: Icon(Icons.restaurant_menu, color: AppColors.emerald, size: 22),
+                label: 'Eats AI',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.person_outline, color: AppColors.textSecondary, size: 22),
+                selectedIcon: Icon(Icons.person, color: AppColors.emerald, size: 22),
+                label: 'Profile',
+              ),
+            ],
+          ),
         ),
       ),
     );

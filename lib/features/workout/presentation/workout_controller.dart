@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/utils/activity_calories_calculator.dart';
 import '../../profile/presentation/profile_controller.dart';
@@ -83,6 +84,9 @@ class RestTimerNotifier extends StateNotifier<RestTimerState> {
       if (state.remainingSeconds <= 1) {
         timer.cancel();
         state = state.copyWith(isActive: false, remainingSeconds: 0);
+        try {
+          HapticFeedback.vibrate();
+        } catch (_) {}
       } else {
         state = state.copyWith(remainingSeconds: state.remainingSeconds - 1);
       }

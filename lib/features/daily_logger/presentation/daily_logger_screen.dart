@@ -146,6 +146,7 @@ class _DailyLoggerScreenState extends ConsumerState<DailyLoggerScreen> {
   }
 
   void _changeDate(DateTime newDate) {
+    HapticFeedback.selectionClick();
     setState(() {
       _selectedDate = DateTime(newDate.year, newDate.month, newDate.day);
       _loadDateData(_selectedDate);
@@ -310,6 +311,8 @@ class _DailyLoggerScreenState extends ConsumerState<DailyLoggerScreen> {
 
       if (!mounted) return;
 
+      await HapticFeedback.mediumImpact();
+      if (!mounted) return;
       final dateLabel = DateFormat('d MMM yyyy').format(_selectedDate);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -358,6 +361,7 @@ class _DailyLoggerScreenState extends ConsumerState<DailyLoggerScreen> {
     return Scaffold(
       body: SafeArea(
         child: SingleChildScrollView(
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
