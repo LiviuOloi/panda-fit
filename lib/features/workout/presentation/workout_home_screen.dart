@@ -16,7 +16,13 @@ class WorkoutHomeScreen extends ConsumerStatefulWidget {
 }
 
 class _WorkoutHomeScreenState extends ConsumerState<WorkoutHomeScreen> {
-  final DateFormat _dateFormat = DateFormat('EEEE, d MMMM yyyy', 'ro');
+  String _formatSessionDate(DateTime date) {
+    try {
+      return DateFormat('EEEE, d MMMM yyyy', 'ro').format(date);
+    } catch (_) {
+      return DateFormat('yyyy-MM-dd HH:mm').format(date);
+    }
+  }
 
   void _startWorkoutFromTemplate(WorkoutTemplate template) {
     ref.read(activeWorkoutProvider.notifier).startWorkout(
@@ -500,18 +506,17 @@ class _WorkoutHomeScreenState extends ConsumerState<WorkoutHomeScreen> {
           children: [
             const SizedBox(height: 4),
             Text(
-              _dateFormat.format(session.startTime),
+              _formatSessionDate(session.startTime),
               style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
             ),
             const SizedBox(height: 6),
-            Row(
+            Wrap(
+              spacing: 6,
+              runSpacing: 4,
               children: [
                 _buildHistoryTag('${session.exercises.length} exerciții'),
-                const SizedBox(width: 6),
                 _buildHistoryTag('${session.totalCompletedSets} serii'),
-                const SizedBox(width: 6),
                 _buildHistoryTag('${session.totalVolumeKg.toStringAsFixed(0)} kg volum'),
-                const SizedBox(width: 6),
                 _buildHistoryTag('~${session.caloriesBurned} kcal'),
               ],
             ),

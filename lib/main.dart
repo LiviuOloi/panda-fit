@@ -10,10 +10,17 @@ import 'features/nutrition_guide/presentation/nutrition_guide_screen.dart';
 import 'features/profile/presentation/profile_screen.dart';
 import 'features/workout/presentation/workout_home_screen.dart';
 
+import 'package:intl/date_symbol_data_local.dart';
+
 import 'features/auth/presentation/session_gate.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize date formatting for Romanian and international locales
+  try {
+    await initializeDateFormatting('ro', null);
+  } catch (_) {}
 
   // Initialize Supabase
   await SupabaseService.initialize();

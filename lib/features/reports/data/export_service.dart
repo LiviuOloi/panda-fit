@@ -29,7 +29,12 @@ class ExportService {
     // Column headers
     buffer.writeln('Data,Ziua,Greutate (kg),Medie 7 Zile (kg),Delta Start (kg),Calorii Consumate (kcal),Calorii Arse (kcal),Calorii Net (kcal),Plan Urmat,Inot / Activitate,Cina,Note');
 
-    final dayFormat = DateFormat('EEEE', 'ro');
+    DateFormat dayFormat;
+    try {
+      dayFormat = DateFormat('EEEE', 'ro');
+    } catch (_) {
+      dayFormat = DateFormat('EEEE');
+    }
 
     for (final entry in summary.entries) {
       final dateStr = _dateFormat.format(entry.entryDate);
