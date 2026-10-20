@@ -12,6 +12,8 @@ analyzer:
   exclude:
     - build/**
     - web/**
+    - android/**
+    - ios/**
 
 linter:
   rules:
