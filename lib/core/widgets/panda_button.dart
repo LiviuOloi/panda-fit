@@ -10,6 +10,9 @@ class PandaButton extends StatelessWidget {
   final bool isLoading;
   final PandaButtonVariant variant;
   final double? width;
+  final double? height;
+  final EdgeInsetsGeometry? padding;
+  final double? fontSize;
 
   const PandaButton({
     super.key,
@@ -19,6 +22,9 @@ class PandaButton extends StatelessWidget {
     this.isLoading = false,
     this.variant = PandaButtonVariant.primary,
     this.width,
+    this.height,
+    this.padding,
+    this.fontSize,
   });
 
   @override
@@ -65,7 +71,7 @@ class PandaButton extends StatelessWidget {
                 style: TextStyle(
                   color: fg,
                   fontWeight: FontWeight.w600,
-                  fontSize: 15,
+                  fontSize: fontSize ?? 15,
                 ),
               ),
             ],
@@ -73,13 +79,14 @@ class PandaButton extends StatelessWidget {
 
     return SizedBox(
       width: width,
-      height: 48,
+      height: height ?? 48,
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(
           backgroundColor: bg,
           foregroundColor: fg,
           elevation: 0,
           side: side,
+          padding: padding,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),

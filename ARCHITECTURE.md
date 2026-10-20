@@ -278,3 +278,15 @@ The `NotificationService` manages on-device timezone-aware notifications without
 - **Platform Implementations:**
   - **Android:** AndroidNotificationChannel with high priority, custom launcher icons, and exact alarm support.
   - **iOS:** DarwinNotificationDetails with alert, badge, and sound support.
+
+---
+
+## 12. Mobile Responsiveness & Viewport Wrapping Architecture
+
+To deliver an ergonomic experience across all phone widths (320px to 420px) as well as tablets and desktops:
+1. **Dynamic Adaptive Headers:** Screen headers utilize `LayoutBuilder` with an `isCompact` threshold (< 420px) to dynamically scale title font sizes (26px -> 21px) and button labels/padding (`Quick Log` -> `Log`, `Antrenament Nou` -> `Nou`).
+2. **Defensive Row Boundaries:** All text descriptions inside horizontal rows are constrained with `Expanded` or `Flexible` to prevent `RenderFlex` overflow and clipping.
+3. **Multi-Tier Action Bars:** Complex button clusters (e.g. Barcode Scan, AI Coach, Add Custom Meal, Clear All) employ a clean 2-tier hierarchy with horizontally scrollable action pills on mobile rather than overflowing a single row.
+4. **Fluid Wrap Containers:** Meta information, chart legends, and ETA projection labels utilize `Wrap` with `runSpacing` to gracefully stack on narrow screens without collision.
+5. **Multi-Line Recipe & Routine Titles:** Checklists and routine cards allow 2 lines (`maxLines: 2`) with `TextOverflow.ellipsis` so users can read complete meal and workout names.
+

@@ -359,9 +359,14 @@ panda_fit/
 - Never perform database calls inside UI build methods; delegate to repositories.
 
 ### 6.2 Responsive Design Guidelines
-The UI must deliver a first-class experience on both mobile viewports ($< 600\text{px}$) and desktop/web ($> 1024\text{px}$):
-- **Mobile:** Bottom navigation bar, vertical scrolling, compact quick-log modal, touch-friendly tap targets ($\ge 48\times 48\text{dp}$).
-- **Web / Desktop:** Left sidebar navigation or top header, multi-column dashboard grid, expansive charts with hover tooltips and data point inspection.
+The UI must deliver a first-class experience on mobile viewports ($< 600\text{px}$), ultra-compact screens ($320\text{px}-420\text{px}$), and desktop/web ($> 1024\text{px}$):
+- **Mobile & Ultra-Compact (< 420px):**
+  - **Dynamic Breakpoint Scaling:** Screen headers must utilize `LayoutBuilder` with an `isCompact` threshold ($< 420\text{px}$) to adapt action button labels and padding (e.g. `Quick Log` -> `Log`, `Antrenament Nou` -> `Nou`).
+  - **Defensive Row Invariants:** All text inside `Row` widgets adjacent to action buttons or badges must be wrapped in `Expanded` or `Flexible` with explicit ellipsis or multi-line wrapping to prevent `RenderFlex` overflow.
+  - **Multi-Tier Action Clusters:** Complex action button sets (e.g. Scan Barcode, AI Coach, Add Recipe) must use a 2-tier layout with horizontally scrollable action pills on small screens rather than forcing a single crowded row.
+  - **Fluid Wrap:** Legends, metadata badges, and milestone ETA tags must utilize `Wrap` with `runSpacing` to gracefully stack on narrow screens.
+  - **Touch Targets & Bottom Navigation:** Bottom navigation bar wrapped in `SafeArea(top: false)`, touch targets $\ge 48\times 48\text{dp}$, and `ScrollViewKeyboardDismissBehavior.onDrag`.
+- **Web / Desktop (> 1024px):** Left sidebar navigation or top header, multi-column dashboard grid, expansive charts with hover tooltips and data point inspection.
 
 ---
 

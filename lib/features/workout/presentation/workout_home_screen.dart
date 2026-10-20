@@ -73,52 +73,70 @@ class _WorkoutHomeScreenState extends ConsumerState<WorkoutHomeScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Header
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final isCompact = constraints.maxWidth < 420;
+                  return Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      Row(
-                        children: [
-                          Icon(Icons.fitness_center, color: AppColors.emerald, size: 18),
-                          SizedBox(width: 8),
-                          Text(
-                            'PANDAFIT · WORKOUT LOGGER',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 1.2,
-                              color: AppColors.emerald,
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Row(
+                              children: [
+                                Icon(Icons.fitness_center, color: AppColors.emerald, size: 16),
+                                SizedBox(width: 6),
+                                Flexible(
+                                  child: Text(
+                                    'PANDAFIT · WORKOUT LOGGER',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 1.1,
+                                      color: AppColors.emerald,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
                             ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 4),
-                      Text(
-                        'Jurnal de Sală',
-                        style: TextStyle(
-                          fontSize: 26,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textPrimary,
-                          letterSpacing: -0.5,
+                            const SizedBox(height: 3),
+                            Text(
+                              'Jurnal de Sală',
+                              style: TextStyle(
+                                fontSize: isCompact ? 21 : 26,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.textPrimary,
+                                letterSpacing: -0.5,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
                         ),
                       ),
+                      const SizedBox(width: 8),
+                      PandaButton(
+                        label: isCompact ? 'Nou' : 'Antrenament Nou',
+                        icon: Icons.add,
+                        height: 38,
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        fontSize: 13,
+                        onPressed: _startCustomWorkout,
+                      ),
                     ],
-                  ),
-                  PandaButton(
-                    label: 'Antrenament Nou',
-                    icon: Icons.add,
-                    onPressed: _startCustomWorkout,
-                  ),
-                ],
+                  );
+                },
               ),
               const SizedBox(height: 18),
 
               // Active Workout Banner (if in progress)
               if (activeWorkout != null) ...[
                 Container(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
                     color: AppColors.surface,
                     borderRadius: BorderRadius.circular(14),
@@ -134,49 +152,63 @@ class _WorkoutHomeScreenState extends ConsumerState<WorkoutHomeScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: AppColors.emerald.withValues(alpha: 0.2),
-                              shape: BoxShape.circle,
+                      Expanded(
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: AppColors.emerald.withValues(alpha: 0.2),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.flash_on, color: AppColors.emerald, size: 20),
                             ),
-                            child: const Icon(Icons.flash_on, color: AppColors.emerald, size: 22),
-                          ),
-                          const SizedBox(width: 12),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'ANTRENAMENT ÎN DESFĂȘURARE',
-                                style: TextStyle(
-                                  color: AppColors.emerald,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: 1.1,
-                                ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'ANTRENAMENT ÎN CURS',
+                                    style: TextStyle(
+                                      color: AppColors.emerald,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 1.1,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    activeWorkout.name,
+                                    style: const TextStyle(
+                                      color: AppColors.textPrimary,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  Text(
+                                    '${activeWorkout.exercises.length} exerciții · ${activeWorkout.totalCompletedSets} serii',
+                                    style: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
                               ),
-                              const SizedBox(height: 2),
-                              Text(
-                                activeWorkout.name,
-                                style: const TextStyle(
-                                  color: AppColors.textPrimary,
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              Text(
-                                '${activeWorkout.exercises.length} exerciții · ${activeWorkout.totalCompletedSets} serii gata',
-                                style: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
-                              ),
-                            ],
-                          ),
-                        ],
+                            ),
+                          ],
+                        ),
                       ),
+                      const SizedBox(width: 8),
                       PandaButton(
                         label: 'Continuă',
                         icon: Icons.play_arrow,
+                        height: 38,
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        fontSize: 13,
                         variant: PandaButtonVariant.primary,
                         onPressed: () {
                           Navigator.push(
@@ -265,7 +297,7 @@ class _WorkoutHomeScreenState extends ConsumerState<WorkoutHomeScreen> {
               const SizedBox(height: 12),
 
               SizedBox(
-                height: 175,
+                height: 185,
                 child: ListView.builder(
                   scrollDirection: Axis.horizontal,
                   itemCount: ExerciseLibrary.presetTemplates.length,
@@ -415,7 +447,7 @@ class _WorkoutHomeScreenState extends ConsumerState<WorkoutHomeScreen> {
               Expanded(
                 child: Text(
                   template.name,
-                  maxLines: 1,
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     fontSize: 13,

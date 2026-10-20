@@ -209,8 +209,10 @@ class MissionsScreen extends ConsumerWidget {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    Wrap(
+                      alignment: WrapAlignment.spaceBetween,
+                      spacing: 8,
+                      runSpacing: 4,
                       children: [
                         Text('Start: $startWeight kg', style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
                         Text('Current: $currentWeight kg', style: const TextStyle(color: AppColors.cyan, fontSize: 12, fontWeight: FontWeight.bold)),
@@ -286,8 +288,10 @@ class MissionsScreen extends ConsumerWidget {
                               ],
                             ),
                             const SizedBox(height: 8),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            Wrap(
+                              alignment: WrapAlignment.spaceBetween,
+                              spacing: 8,
+                              runSpacing: 4,
                               children: [
                                 Text(
                                   'Rămas: ${etaEstimate.remainingKg} kg',
@@ -296,7 +300,7 @@ class MissionsScreen extends ConsumerWidget {
                                 Text(
                                   weeklyRate != null
                                       ? 'Calculat la ritmul tău: ${etaEstimate.weeklyPaceKg} kg/săpt'
-                                      : 'Ritm de referință sănătos: ${etaEstimate.weeklyPaceKg} kg/săpt',
+                                      : 'Ritm sănătos: ${etaEstimate.weeklyPaceKg} kg/săpt',
                                   style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
                                 ),
                               ],
@@ -438,33 +442,42 @@ class MissionsScreen extends ConsumerWidget {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Row(
-                                  children: [
-                                    Text(isArchivedAccomplished ? '🏆' : (isCut ? '✂️' : '🦁'), style: const TextStyle(fontSize: 20)),
-                                    const SizedBox(width: 10),
-                                    Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          '${isCut ? "Cutting" : "Bulking"}: ${m.missionStartWeight} kg → ${m.targetWeight} kg',
-                                          style: const TextStyle(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.bold,
-                                            color: AppColors.textPrimary,
-                                          ),
+                                Expanded(
+                                  child: Row(
+                                    children: [
+                                      Text(isArchivedAccomplished ? '🏆' : (isCut ? '✂️' : '🦁'), style: const TextStyle(fontSize: 20)),
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              '${isCut ? "Cutting" : "Bulking"}: ${m.missionStartWeight} kg → ${m.targetWeight} kg',
+                                              style: const TextStyle(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.bold,
+                                                color: AppColors.textPrimary,
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                            Text(
+                                              '${totalDelta > 0 ? "+" : ""}$totalDelta kg · Durată: $durationDays ${durationDays == 1 ? "zi" : "zile"}',
+                                              style: TextStyle(
+                                                fontSize: 11,
+                                                color: isArchivedAccomplished ? AppColors.emeraldLight : AppColors.textMuted,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ],
                                         ),
-                                        Text(
-                                          '${totalDelta > 0 ? "+" : ""}$totalDelta kg · Durată: $durationDays ${durationDays == 1 ? "zi" : "zile"}',
-                                          style: TextStyle(
-                                            fontSize: 11,
-                                            color: isArchivedAccomplished ? AppColors.emeraldLight : AppColors.textMuted,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
+                                      ),
+                                    ],
+                                  ),
                                 ),
+                                const SizedBox(width: 8),
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                                   decoration: BoxDecoration(

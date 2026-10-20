@@ -138,77 +138,100 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Header
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final isCompact = constraints.maxWidth < 420;
+                  return Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  width: 8,
+                                  height: 8,
+                                  decoration: const BoxDecoration(
+                                    color: AppColors.emerald,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                Flexible(
+                                  child: Text(
+                                    profile != null
+                                        ? 'PANDAFIT · ${profile.firstName.toUpperCase()}'
+                                        : 'PANDAFIT ENGINE',
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 1.1,
+                                      color: AppColors.emerald,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              'Metabolic Overview',
+                              style: TextStyle(
+                                fontSize: isCompact ? 21 : 26,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.textPrimary,
+                                letterSpacing: -0.5,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
                       Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          Container(
-                            width: 10,
-                            height: 10,
-                            decoration: const BoxDecoration(
-                              color: AppColors.emerald,
-                              shape: BoxShape.circle,
+                          IconButton(
+                            tooltip: 'Rapoarte & Export Date (PDF, CSV, JSON)',
+                            style: IconButton.styleFrom(
+                              backgroundColor: AppColors.surfaceElevated,
+                              side: const BorderSide(color: AppColors.glassBorder),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              padding: const EdgeInsets.all(8),
+                              minimumSize: const Size(38, 38),
                             ),
+                            icon: const Icon(Icons.file_download_outlined, color: AppColors.cyan, size: 19),
+                            onPressed: () {
+                              if (profile == null) return;
+                              ExportReportDialog.show(
+                                context,
+                                profile: profile,
+                                entries: entries,
+                                activeMission: activeMission,
+                              );
+                            },
                           ),
-                          const SizedBox(width: 8),
-                          Text(
-                            profile != null ? 'PANDAFIT · ${profile.firstName.toUpperCase()}' : 'PANDAFIT ENGINE',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 1.2,
-                              color: AppColors.emerald,
-                            ),
+                          const SizedBox(width: 6),
+                          PandaButton(
+                            label: isCompact ? 'Log' : 'Quick Log',
+                            icon: Icons.add,
+                            height: 38,
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            fontSize: 13,
+                            onPressed: widget.onQuickLogPressed,
                           ),
                         ],
                       ),
-                      const SizedBox(height: 4),
-                      const Text(
-                        'Metabolic Overview',
-                        style: TextStyle(
-                          fontSize: 26,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textPrimary,
-                          letterSpacing: -0.5,
-                        ),
-                      ),
                     ],
-                  ),
-                  Row(
-                    children: [
-                      IconButton(
-                        tooltip: 'Rapoarte & Export Date (PDF, CSV, JSON)',
-                        style: IconButton.styleFrom(
-                          backgroundColor: AppColors.surfaceElevated,
-                          side: const BorderSide(color: AppColors.glassBorder),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                        ),
-                        icon: const Icon(Icons.file_download_outlined, color: AppColors.cyan, size: 20),
-                        onPressed: () {
-                          if (profile == null) return;
-                          ExportReportDialog.show(
-                            context,
-                            profile: profile,
-                            entries: entries,
-                            activeMission: activeMission,
-                          );
-                        },
-                      ),
-                      const SizedBox(width: 8),
-                      PandaButton(
-                        label: 'Quick Log',
-                        icon: Icons.add,
-                        onPressed: widget.onQuickLogPressed,
-                      ),
-                    ],
-                  ),
-                ],
+                  );
+                },
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
 
               // Active Mission Progress Banner
               GlassCard(
@@ -218,36 +241,42 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   children: [
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: AppColors.emerald.withValues(alpha: 0.2),
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: const Text(
-                                'ACTIVE MISSION',
-                                style: TextStyle(
-                                  color: AppColors.emeraldLight,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: 0.8,
+                        Expanded(
+                          child: Wrap(
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            spacing: 8,
+                            runSpacing: 4,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: AppColors.emerald.withValues(alpha: 0.2),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: const Text(
+                                  'ACTIVE MISSION',
+                                  style: TextStyle(
+                                    color: AppColors.emeraldLight,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 0.8,
+                                  ),
                                 ),
                               ),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              isCutting ? 'Cutting Phase (Fat Loss)' : 'Bulking Phase (Muscle Gain)',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                                color: AppColors.textPrimary,
+                              Text(
+                                isCutting ? 'Cutting Phase (Fat Loss)' : 'Bulking Phase (Muscle Gain)',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 15,
+                                  color: AppColors.textPrimary,
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
+                        const SizedBox(width: 8),
                         Text(
                           '${(missionProgress * 100).clamp(0, 100).toInt()}%',
                           style: const TextStyle(
@@ -269,8 +298,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    Wrap(
+                      alignment: WrapAlignment.spaceBetween,
+                      spacing: 8,
+                      runSpacing: 4,
                       children: [
                         Text('Start: $startWeight kg', style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
                         Text(
@@ -288,13 +319,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               LayoutBuilder(
                 builder: (context, constraints) {
                   final isWide = constraints.maxWidth > 600;
+                  final isVeryNarrow = constraints.maxWidth < 360;
                   return GridView.count(
                     crossAxisCount: isWide ? 4 : 2,
-                    crossAxisSpacing: 12,
-                    mainAxisSpacing: 12,
+                    crossAxisSpacing: 10,
+                    mainAxisSpacing: 10,
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
-                    childAspectRatio: isWide ? 1.4 : 1.15,
+                    childAspectRatio: isWide ? 1.4 : (isVeryNarrow ? 1.05 : 1.15),
                     children: [
                       MetricSummaryCard(
                         title: 'Morning Weight',
@@ -335,7 +367,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
               // Analytics & Consistency Insights Cards
               GlassCard(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                 child: Row(
                   children: [
                     // 1. Weekly Rate
@@ -347,9 +379,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             children: [
                               Icon(Icons.speed_rounded, size: 14, color: AppColors.cyanLight),
                               SizedBox(width: 4),
-                              Text(
-                                'Viteză Trend',
-                                style: TextStyle(color: AppColors.textSecondary, fontSize: 11, fontWeight: FontWeight.w600),
+                              Flexible(
+                                child: Text(
+                                  'Viteză Trend',
+                                  style: TextStyle(color: AppColors.textSecondary, fontSize: 11, fontWeight: FontWeight.w600),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ),
                             ],
                           ),
@@ -357,14 +392,15 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           Text(
                             weeklyRate != null
                                 ? '${weeklyRate >= 0 ? "+" : ""}$weeklyRate kg/săpt'
-                                : (entries.length < 2 ? 'Calcul după 2+ zile' : 'Stabil'),
+                                : (entries.length < 2 ? 'După 2+ zile' : 'Stabil'),
                             style: TextStyle(
                               color: weeklyRate != null
                                   ? (weeklyRate < 0 ? AppColors.emeraldLight : AppColors.cyanLight)
                                   : AppColors.textPrimary,
-                              fontSize: 14,
+                              fontSize: 13,
                               fontWeight: FontWeight.bold,
                             ),
+                            maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
                           const SizedBox(height: 2),
@@ -373,12 +409,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                 ? 'Pace sustenabil'
                                 : (weeklyRate != null ? 'Pace accelerat' : 'Tendință netă'),
                             style: const TextStyle(color: AppColors.textMuted, fontSize: 10),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ],
                       ),
                     ),
                     Container(width: 1, height: 42, color: AppColors.glassBorder),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 10),
 
                     // 2. Logging Streak
                     Expanded(
@@ -389,9 +427,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             children: [
                               Icon(Icons.local_fire_department_rounded, size: 14, color: AppColors.amber),
                               SizedBox(width: 4),
-                              Text(
-                                'Streak Activ',
-                                style: TextStyle(color: AppColors.textSecondary, fontSize: 11, fontWeight: FontWeight.w600),
+                              Flexible(
+                                child: Text(
+                                  'Streak Activ',
+                                  style: TextStyle(color: AppColors.textSecondary, fontSize: 11, fontWeight: FontWeight.w600),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ),
                             ],
                           ),
@@ -400,20 +441,24 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             streakDays > 0 ? '$streakDays ${streakDays == 1 ? "zi" : "zile"}' : '0 zile',
                             style: const TextStyle(
                               color: AppColors.amber,
-                              fontSize: 14,
+                              fontSize: 13,
                               fontWeight: FontWeight.bold,
                             ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                           const SizedBox(height: 2),
-                          Text(
-                            streakDays >= 3 ? 'Consistență excelentă' : 'Loghează zilnic',
-                            style: const TextStyle(color: AppColors.textMuted, fontSize: 10),
+                          const Text(
+                            'Loghează zilnic',
+                            style: TextStyle(color: AppColors.textMuted, fontSize: 10),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ],
                       ),
                     ),
                     Container(width: 1, height: 42, color: AppColors.glassBorder),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 10),
 
                     // 3. Diet Adherence
                     Expanded(
@@ -424,9 +469,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             children: [
                               Icon(Icons.verified_rounded, size: 14, color: AppColors.emeraldLight),
                               SizedBox(width: 4),
-                              Text(
-                                'Aderență Plan',
-                                style: TextStyle(color: AppColors.textSecondary, fontSize: 11, fontWeight: FontWeight.w600),
+                              Flexible(
+                                child: Text(
+                                  'Aderență Plan',
+                                  style: TextStyle(color: AppColors.textSecondary, fontSize: 11, fontWeight: FontWeight.w600),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ),
                             ],
                           ),
@@ -435,14 +483,18 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             '$adherencePercent%',
                             style: TextStyle(
                               color: adherencePercent >= 80 ? AppColors.emeraldLight : AppColors.amber,
-                              fontSize: 14,
+                              fontSize: 13,
                               fontWeight: FontWeight.bold,
                             ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            adherencePercent >= 85 ? 'Respectat riguros' : 'Deviații notate',
+                            adherencePercent >= 85 ? 'Respectat' : 'Deviații',
                             style: const TextStyle(color: AppColors.textMuted, fontSize: 10),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ],
                       ),
@@ -461,27 +513,30 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Weight Trend & Rolling MA',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.textPrimary,
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Weight Trend & Rolling MA',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.textPrimary,
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Media 7Z filtrează apa & retenția de sodiu',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: AppColors.textSecondary.withValues(alpha: 0.8),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Media 7Z filtrează apa & retenția de sodiu',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.textSecondary.withValues(alpha: 0.8),
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
+                        const SizedBox(width: 8),
                         // Timeframe Pill Selector
                         Container(
                           padding: const EdgeInsets.all(3),
@@ -526,16 +581,15 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     const SizedBox(height: 12),
 
                     // Legend Row
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
+                    Wrap(
+                      alignment: WrapAlignment.end,
+                      spacing: 12,
+                      runSpacing: 6,
                       children: [
                         _buildLegendItem('Cântar Zilnic', AppColors.cyan),
-                        const SizedBox(width: 14),
                         _buildLegendItem('Medie 7Z (Trend Real)', AppColors.emerald),
-                        if (activeMission != null) ...[
-                          const SizedBox(width: 14),
+                        if (activeMission != null)
                           _buildLegendItem('Țintă Misiune', AppColors.amber),
-                        ],
                       ],
                     ),
                     const SizedBox(height: 20),

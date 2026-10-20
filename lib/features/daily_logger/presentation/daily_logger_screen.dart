@@ -521,31 +521,37 @@ class _DailyLoggerScreenState extends ConsumerState<DailyLoggerScreen> {
                   children: [
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Daily Meals Consumed',
-                              style: TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.textPrimary,
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Daily Meals Consumed',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.textPrimary,
+                                ),
                               ),
-                            ),
-                            SizedBox(height: 4),
-                            Text(
-                              'Check off meals to automatically accumulate calories in',
-                              style: TextStyle(color: AppColors.textMuted, fontSize: 12),
-                            ),
-                          ],
+                              SizedBox(height: 4),
+                              Text(
+                                'Check off meals to automatically accumulate calories in',
+                                style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+                              ),
+                            ],
+                          ),
                         ),
                         if (profile != null && activeMission != null)
                           Row(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
                               IconButton(
                                 icon: const Icon(Icons.qr_code_scanner, color: AppColors.amber),
                                 tooltip: 'Scanează Cod de Bare Aliment',
+                                padding: const EdgeInsets.all(8),
+                                constraints: const BoxConstraints(),
                                 onPressed: () {
                                   BarcodeScannerDialog.show(
                                     context,
@@ -566,9 +572,12 @@ class _DailyLoggerScreenState extends ConsumerState<DailyLoggerScreen> {
                                   );
                                 },
                               ),
+                              const SizedBox(width: 4),
                               IconButton(
                                 icon: const Icon(Icons.smart_toy_outlined, color: AppColors.emeraldLight),
                                 tooltip: 'Consult Panda Coach AI',
+                                padding: const EdgeInsets.all(8),
+                                constraints: const BoxConstraints(),
                                 onPressed: () {
                                   Navigator.of(context).push(
                                     MaterialPageRoute<void>(
@@ -1138,7 +1147,7 @@ class _DailyLoggerScreenState extends ConsumerState<DailyLoggerScreen> {
                   fontSize: 13,
                   decoration: isConsumed ? TextDecoration.lineThrough : null,
                 ),
-                maxLines: 1,
+                maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
             ),

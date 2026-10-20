@@ -115,6 +115,12 @@ Obiectivele de greutate sunt tratate ca **Misiuni active**:
 * **Mementouri Locale Programate:** Reamintire zilnică pentru cântărire dimineața (ex: 07:30) și salvare jurnal seara (ex: 21:00).
 * **Card Descărcare Nativă Android:** Buton direct pentru descărcarea fișierului `PandaFit.apk`.
 
+### 8. Mobile Responsiveness & Ergonomie pe Orice Ecran
+* **Header Adaptiv Dinamic:** Titlurile și acțiunile principale (`Quick Log`, `Antrenament Nou`) se adaptează automat pe ecrane înguste (< 420px), prevenind trunchierea.
+* **Bară de Acțiuni pe 2 Niveluri:** Butoanele din meniul alimentar (`Scanează Cod`, `Panda AI`, `Adaugă Masă`) sunt organizate în cip-uri derulabile orizontal, fără a împinge butoanele de editare/ștergere în afara ecranului.
+* **Wrap Fluid:** Legendele graficelor, proiecțiile ETA și etichetele de progres se rearanjează automat pe două rânduri când spațiul este limitat.
+* **Titluri Multi-Line:** Numele rețetelor și al rutinelor de sală permit 2 rânduri (`maxLines: 2`), rămânând complet lizibile pe telefoane de orice dimensiune.
+
 ---
 
 ## 6. Native Packaging & CI/CD Pipeline
@@ -122,3 +128,4 @@ Obiectivele de greutate sunt tratate ca **Misiuni active**:
 * **GitHub Pages Web Deployment:** Automatizat prin `.github/workflows/deploy.yml`.
 * **Automated Android APK Release:** Automatizat prin `.github/workflows/build-apk.yml`, cu publicare automată în GitHub Releases la adresa `https://github.com/LiviuOloi/panda-fit/releases/tag/mobile-latest`.
 * **Splash Screen Dark & App Icons:** Iconițe adaptive pe toate densitățile Android/iOS și pornire fără flash alb (`#0F172A`).
+

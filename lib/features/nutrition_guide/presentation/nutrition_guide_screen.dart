@@ -150,29 +150,33 @@ class _NutritionGuideScreenState extends ConsumerState<NutritionGuideScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'PANDA EATS AI',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 1.2,
-                          color: AppColors.emerald,
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'PANDA EATS AI',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1.2,
+                            color: AppColors.emerald,
+                          ),
                         ),
-                      ),
-                      SizedBox(height: 4),
-                      Text(
-                        'Glycemic Food Matrix',
-                        style: TextStyle(
-                          fontSize: 26,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textPrimary,
-                          letterSpacing: -0.5,
+                        SizedBox(height: 4),
+                        Text(
+                          'Glycemic Food Matrix',
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textPrimary,
+                            letterSpacing: -0.5,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                   IconButton(
                     icon: Icon(
@@ -306,40 +310,31 @@ class _NutritionGuideScreenState extends ConsumerState<NutritionGuideScreen> {
               ),
               const SizedBox(height: 24),
 
-              // User's Custom Meals Section
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              // User's Custom Meals Section Header
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Planul Tău Alimentar / Mese',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
                   Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      TextButton.icon(
-                        onPressed: () => _openBarcodeScanner(context, profile, activeMission),
-                        icon: const Icon(Icons.qr_code_scanner, size: 16, color: AppColors.amber),
-                        label: const Text('Scanează', style: TextStyle(color: AppColors.amber, fontWeight: FontWeight.bold)),
-                      ),
-                      if (recipesAsync.valueOrNull != null && recipesAsync.valueOrNull!.isNotEmpty)
-                        TextButton.icon(
-                          onPressed: () => _openAiNutritionist(context, profile, activeMission),
-                          icon: const Icon(Icons.auto_awesome, size: 16, color: AppColors.cyanLight),
-                          label: const Text('Panda AI', style: TextStyle(color: AppColors.cyanLight, fontWeight: FontWeight.bold)),
+                      const Expanded(
+                        child: Text(
+                          'Planul Tău Alimentar / Mese',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textPrimary,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                      TextButton.icon(
-                        onPressed: () => _openCustomRecipeDialog(context),
-                        icon: const Icon(Icons.add, size: 18, color: AppColors.emerald),
-                        label: const Text('Adaugă Masă', style: TextStyle(color: AppColors.emerald, fontWeight: FontWeight.bold)),
                       ),
                       if (recipesAsync.valueOrNull != null && recipesAsync.valueOrNull!.isNotEmpty)
                         IconButton(
                           icon: const Icon(Icons.delete_sweep_outlined, size: 20, color: AppColors.rose),
                           tooltip: 'Șterge toate mesele din plan',
+                          padding: const EdgeInsets.all(6),
+                          constraints: const BoxConstraints(),
                           onPressed: () async {
                             final confirm = await showDialog<bool>(
                               context: context,
@@ -368,6 +363,36 @@ class _NutritionGuideScreenState extends ConsumerState<NutritionGuideScreen> {
                           },
                         ),
                     ],
+                  ),
+                  const SizedBox(height: 10),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        _buildHeaderActionChip(
+                          icon: Icons.qr_code_scanner,
+                          label: 'Scanează Cod',
+                          color: AppColors.amber,
+                          onPressed: () => _openBarcodeScanner(context, profile, activeMission),
+                        ),
+                        if (recipesAsync.valueOrNull != null && recipesAsync.valueOrNull!.isNotEmpty) ...[
+                          const SizedBox(width: 8),
+                          _buildHeaderActionChip(
+                            icon: Icons.auto_awesome,
+                            label: 'Panda AI',
+                            color: AppColors.cyanLight,
+                            onPressed: () => _openAiNutritionist(context, profile, activeMission),
+                          ),
+                        ],
+                        const SizedBox(width: 8),
+                        _buildHeaderActionChip(
+                          icon: Icons.add,
+                          label: 'Adaugă Masă',
+                          color: AppColors.emerald,
+                          onPressed: () => _openCustomRecipeDialog(context),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -622,8 +647,11 @@ class _NutritionGuideScreenState extends ConsumerState<NutritionGuideScreen> {
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(color: AppColors.emerald.withValues(alpha: 0.3)),
                         ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        child: Wrap(
+                          alignment: WrapAlignment.spaceBetween,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          spacing: 8,
+                          runSpacing: 4,
                           children: [
                             Text(
                               _selectedCategory == 'ALL' && query.isEmpty
@@ -664,46 +692,60 @@ class _NutritionGuideScreenState extends ConsumerState<NutritionGuideScreen> {
           children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: isCustom
-                            ? AppColors.cyan.withValues(alpha: 0.2)
-                            : AppColors.emerald.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        isCustom ? 'PERSONAL · ${recipe.category}' : recipe.category,
-                        style: TextStyle(
-                          color: isCustom ? AppColors.cyanLight : AppColors.emeraldLight,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
+                Expanded(
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: isCustom
+                              ? AppColors.cyan.withValues(alpha: 0.2)
+                              : AppColors.emerald.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          isCustom ? 'PERSONAL · ${recipe.category}' : recipe.category,
+                          style: TextStyle(
+                            color: isCustom ? AppColors.cyanLight : AppColors.emeraldLight,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      recipe.title,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimary,
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          recipe.title,
+                          style: const TextStyle(
+                            fontSize: 14.5,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textPrimary,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-                if (isCustom)
+                if (isCustom) ...[
+                  const SizedBox(width: 6),
                   Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       IconButton(
                         icon: const Icon(Icons.edit_outlined, size: 18, color: AppColors.textMuted),
+                        padding: const EdgeInsets.all(6),
+                        constraints: const BoxConstraints(),
                         onPressed: () => _openCustomRecipeDialog(context, recipe),
                       ),
+                      const SizedBox(width: 4),
                       IconButton(
                         icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.rose),
+                        padding: const EdgeInsets.all(6),
+                        constraints: const BoxConstraints(),
                         onPressed: () async {
                           final repo = ref.read(recipesRepositoryProvider);
                           await repo.deleteCustomRecipe(recipe.id);
@@ -712,6 +754,7 @@ class _NutritionGuideScreenState extends ConsumerState<NutritionGuideScreen> {
                       ),
                     ],
                   ),
+                ],
               ],
             ),
             const SizedBox(height: 4),
@@ -733,6 +776,41 @@ class _NutritionGuideScreenState extends ConsumerState<NutritionGuideScreen> {
                   '• ${ing.name}: ${ing.amount} (${ing.state})',
                   style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
                 ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeaderActionChip({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onPressed,
+  }) {
+    return InkWell(
+      onTap: onPressed,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: color.withValues(alpha: 0.35)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 15, color: color),
+            const SizedBox(width: 5),
+            Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
               ),
             ),
           ],
